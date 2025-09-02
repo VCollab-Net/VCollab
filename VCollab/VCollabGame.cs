@@ -1,14 +1,15 @@
 using System.Reflection;
-using osu.Framework;
-using osu.Framework.Allocation;
-using osu.Framework.Graphics;
-using osu.Framework.Graphics.Shapes;
+
 using osu.Framework.IO.Stores;
+using osu.Framework.Screens;
+using VCollab.Screens;
 
 namespace VCollab;
 
 public partial class VCollabGame : Game
 {
+    private ScreenStack _screenStack = null!;
+
     [BackgroundDependencyLoader]
     private void Load()
     {
@@ -36,8 +37,9 @@ public partial class VCollabGame : Game
         Host.MaximumDrawHz = 60;
         Host.MaximumInactiveHz = 60;
 
-        AddRange([
-            new Box() { RelativeSizeAxes = Axes.Both, Colour = Colour4.Black },
-        ]);
+        _screenStack = new ScreenStack();
+        _screenStack.Push(new MainScreen());
+
+        Add(_screenStack);
     }
 }
