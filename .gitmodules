@@ -1,0 +1,9 @@
+[submodule "libjpeg-turbo-net"]
+	path = libjpeg-turbo-net
+	url = https://github.com/VCollab-Net/libjpeg-turbo-net
+[submodule "veldrid"]
+	path = veldrid
+	url = https://github.com/VCollab-Net/veldrid
+[submodule "osu-framework"]
+	path = osu-framework
+	url = https://github.com/VCollab-Net/osu-framework

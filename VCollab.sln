@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Veldrid", "veldrid\src\Veldrid\Veldrid.csproj", "{3913105F-EE08-4941-984D-F623DE84324E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Veldrid.MetalBindings", "veldrid\src\Veldrid.MetalBindings\Veldrid.MetalBindings.csproj", "{C30BF513-208B-4373-9FE4-EB405540936A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Veldrid.OpenGLBindings", "veldrid\src\Veldrid.OpenGLBindings\Veldrid.OpenGLBindings.csproj", "{93EABD09-6E57-4C82-9140-E205BFD5D499}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "libjpeg-turbo-net", "libjpeg-turbo-net\libjpeg-turbo-net\libjpeg-turbo-net.csproj", "{3107E44A-70EE-4160-9036-24CAD949D23A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "osu.Framework", "osu-framework\osu.Framework\osu.Framework.csproj", "{7B7BA117-8FC8-455B-B82B-29822FECBE3D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VCollab", "VCollab\VCollab.csproj", "{5B293C44-F464-4D7A-9C68-BE358CB5DB88}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3913105F-EE08-4941-984D-F623DE84324E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3913105F-EE08-4941-984D-F623DE84324E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3913105F-EE08-4941-984D-F623DE84324E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3913105F-EE08-4941-984D-F623DE84324E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C30BF513-208B-4373-9FE4-EB405540936A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C30BF513-208B-4373-9FE4-EB405540936A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C30BF513-208B-4373-9FE4-EB405540936A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C30BF513-208B-4373-9FE4-EB405540936A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{93EABD09-6E57-4C82-9140-E205BFD5D499}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{93EABD09-6E57-4C82-9140-E205BFD5D499}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{93EABD09-6E57-4C82-9140-E205BFD5D499}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{93EABD09-6E57-4C82-9140-E205BFD5D499}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3107E44A-70EE-4160-9036-24CAD949D23A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3107E44A-70EE-4160-9036-24CAD949D23A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3107E44A-70EE-4160-9036-24CAD949D23A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3107E44A-70EE-4160-9036-24CAD949D23A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7B7BA117-8FC8-455B-B82B-29822FECBE3D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B7BA117-8FC8-455B-B82B-29822FECBE3D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B7BA117-8FC8-455B-B82B-29822FECBE3D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B7BA117-8FC8-455B-B82B-29822FECBE3D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B293C44-F464-4D7A-9C68-BE358CB5DB88}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B293C44-F464-4D7A-9C68-BE358CB5DB88}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B293C44-F464-4D7A-9C68-BE358CB5DB88}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B293C44-F464-4D7A-9C68-BE358CB5DB88}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

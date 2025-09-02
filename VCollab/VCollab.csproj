@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\libjpeg-turbo-net\libjpeg-turbo-net\libjpeg-turbo-net.csproj" />
+      <ProjectReference Include="..\osu-framework\osu.Framework\osu.Framework.csproj" />
+      <ProjectReference Include="..\veldrid\src\Veldrid.MetalBindings\Veldrid.MetalBindings.csproj" />
+      <ProjectReference Include="..\veldrid\src\Veldrid.OpenGLBindings\Veldrid.OpenGLBindings.csproj" />
+      <ProjectReference Include="..\veldrid\src\Veldrid\Veldrid.csproj" />
+    </ItemGroup>
+
+</Project>
