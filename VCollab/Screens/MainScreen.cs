@@ -17,8 +17,8 @@ public partial class MainScreen : FadingScreen
             [
                 new CircularSolidButton
                 {
-                    Anchor = Anchor.Centre,
-                    Origin = Anchor.Centre,
+                    Anchor = Anchor.TopRight,
+                    Origin = Anchor.TopRight,
                     BackgroundColour = Colors.Primary,
                     Clicked = () => this.Push(new CaptureSetupScreen())
                 }

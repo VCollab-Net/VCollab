@@ -20,4 +20,8 @@
       <EmbeddedResource Include="Resources\**\*.*" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="SpoutDx.Net.Interop" Version="0.1.0" />
+    </ItemGroup>
+
 </Project>

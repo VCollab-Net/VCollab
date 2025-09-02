@@ -1,7 +1,4 @@
-
-
 using osu.Framework.Extensions.Color4Extensions;
-using osu.Framework.Graphics.Effects;
 using osu.Framework.Graphics.Textures;
 using VCollab.Utils.Extensions;
 
@@ -17,7 +14,7 @@ public partial class ComboBox<TItem> : CompositeDrawable where TItem : notnull
 
     private bool _isOpen;
 
-    public IReadOnlyList<TItem> Items { get; }
+    public IReadOnlyList<TItem> Items { get; private set; }
 
     private TItem? _selectedItem;
     private Box _backgroundBox = null!;
@@ -43,6 +40,19 @@ public partial class ComboBox<TItem> : CompositeDrawable where TItem : notnull
     public ComboBox(IEnumerable<TItem> items)
     {
         Items = new List<TItem>(items);
+    }
+
+    public void SetItem(IEnumerable<TItem> items)
+    {
+        // Do not update while dropdown is open
+        if (_isOpen)
+        {
+            return;
+        }
+
+        Items = new List<TItem>(items);
+
+        UpdateItems();
     }
 
     [BackgroundDependencyLoader]
@@ -124,6 +134,13 @@ public partial class ComboBox<TItem> : CompositeDrawable where TItem : notnull
                 }
             }
         ];
+    }
+
+    private void UpdateItems()
+    {
+        var previouslySelected = SelectedItem;
+
+        _optionList.Clear();
 
         // Populate options
         foreach (var item in Items)
@@ -143,7 +160,12 @@ public partial class ComboBox<TItem> : CompositeDrawable where TItem : notnull
             _optionList.Add(option);
         }
 
-        if (Items.Count > 0)
+        // Reselect previous item if it still exists
+        if (previouslySelected is not null && Items.Contains(previouslySelected))
+        {
+            SelectedItem = previouslySelected;
+        }
+        else if (Items.Count > 0)
         {
             SelectedItem = Items[0];
         }

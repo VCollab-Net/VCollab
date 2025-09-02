@@ -1,6 +1,6 @@
 using osu.Framework.Extensions.Color4Extensions;
-using osu.Framework.Graphics.Effects;
 using osu.Framework.Screens;
+using VCollab.Drawables.Spout;
 using VCollab.Utils.Extensions;
 
 namespace VCollab.Screens;
@@ -8,9 +8,12 @@ namespace VCollab.Screens;
 public partial class CaptureSetupScreen : FadingScreen
 {
     private ComboBox<string> _senderPicker = null!;
+    private SpoutTextureReceiver _spoutTextureReceiver = null!;
 
     [Resolved]
     private VCollabSettings Settings { get; set; } = null!;
+
+    private double _lastFetchSendersTime;
 
     [BackgroundDependencyLoader]
     private void Load()
@@ -20,10 +23,18 @@ public partial class CaptureSetupScreen : FadingScreen
             RelativeSizeAxes = Axes.Both,
             Children =
             [
+                _spoutTextureReceiver = new SpoutTextureReceiver(),
+
+                new SpoutSprite(_spoutTextureReceiver)
+                {
+                    RelativeSizeAxes = Axes.Both,
+                    FillMode = FillMode.Fit
+                },
+
                 new CircularSolidButton
                 {
-                    Anchor = Anchor.Centre,
-                    Origin = Anchor.Centre,
+                    Anchor = Anchor.TopRight,
+                    Origin = Anchor.TopRight,
                     BackgroundColour = Colors.Secondary,
                     Clicked = this.Exit
                 },
@@ -59,12 +70,27 @@ public partial class CaptureSetupScreen : FadingScreen
                                     Colour = Colors.Primary,
                                     Text = "Spout source"
                                 },
-                                _senderPicker = new ComboBox<string>(["First item", "Second item", "Third item"])
+                                _senderPicker = new ComboBox<string>([])
                             ]
                         }
                     ]
                 }.WithGlowEffect(Colors.Primary, 20, 12)
             ]
         });
+
+        _senderPicker.SelectionChanged += selection => _spoutTextureReceiver.SenderName = selection;
+    }
+
+    protected override void Update()
+    {
+        base.Update();
+
+        // Regularly update sender list
+        if (Time.Current - _lastFetchSendersTime > 1000)
+        {
+            _senderPicker.SetItem(_spoutTextureReceiver.GetSenderNames());
+
+            _lastFetchSendersTime = Time.Current;
+        }
     }
 }
