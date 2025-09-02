@@ -18,6 +18,8 @@ public partial class CircularSolidButton : CompositeDrawable
             {
                 _background!.Colour = color;
                 _circleContainer!.EdgeEffect = GenerateEdgeEffect();
+                _circleContainer.BorderColour = color.Darken(.2f);
+                _circleContainer.BorderThickness = 3;
             }
         }
     }
@@ -59,8 +61,8 @@ public partial class CircularSolidButton : CompositeDrawable
     private EdgeEffectParameters GenerateEdgeEffect() => new()
     {
         Type = EdgeEffectType.Glow,
-        Colour = BackgroundColour?.Lighten(0.2f) ?? Color4.White,
-        Radius = 5,
+        Colour = BackgroundColour ?? Color4.White,
+        Radius = 8,
         Roundness = 1
     };
 

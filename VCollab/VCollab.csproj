@@ -16,4 +16,8 @@
       <ProjectReference Include="..\veldrid\src\Veldrid\Veldrid.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <EmbeddedResource Include="Resources\**\*.*" />
+    </ItemGroup>
+
 </Project>

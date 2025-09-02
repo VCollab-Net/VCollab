@@ -4,6 +4,9 @@ namespace VCollab.Screens;
 
 public partial class MainScreen : FadingScreen
 {
+    [Resolved]
+    private VCollabSettings Settings { get; set; } = null!;
+
     [BackgroundDependencyLoader]
     private void Load()
     {
@@ -12,16 +15,11 @@ public partial class MainScreen : FadingScreen
             RelativeSizeAxes = Axes.Both,
             Children =
             [
-                new Box
-                {
-                    RelativeSizeAxes = Axes.Both,
-                    Colour = Color4.Black
-                },
                 new CircularSolidButton
                 {
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
-                    BackgroundColour = Color4.DarkSlateGray,
+                    BackgroundColour = Colors.Primary,
                     Clicked = () => this.Push(new CaptureSetupScreen())
                 }
             ]

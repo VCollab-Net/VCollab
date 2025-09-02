@@ -22,6 +22,18 @@ public partial class VCollabGame : Game
         );
     }
 
+    protected override IReadOnlyDependencyContainer CreateChildDependencies(IReadOnlyDependencyContainer parent)
+    {
+        var dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
+
+        // Read settings
+        var settings = VCollabSettings.Load();
+
+        dependencies.Cache(settings);
+
+        return dependencies;
+    }
+
     protected override void LoadComplete()
     {
         base.LoadComplete();
@@ -40,6 +52,14 @@ public partial class VCollabGame : Game
         _screenStack = new ScreenStack();
         _screenStack.Push(new MainScreen());
 
-        Add(_screenStack);
+        AddRange([
+            new Box
+            {
+                RelativeSizeAxes = Axes.Both,
+                Colour = Colors.Background
+            },
+
+            _screenStack
+        ]);
     }
 }
