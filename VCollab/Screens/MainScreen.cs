@@ -1,3 +1,4 @@
+using osu.Framework.Platform;
 using osu.Framework.Screens;
 
 namespace VCollab.Screens;
@@ -8,7 +9,7 @@ public partial class MainScreen : FadingScreen
     private VCollabSettings Settings { get; set; } = null!;
 
     [BackgroundDependencyLoader]
-    private void Load()
+    private void Load(GameHost host)
     {
         AddInternal(new Container
         {
@@ -21,6 +22,14 @@ public partial class MainScreen : FadingScreen
                     Origin = Anchor.TopRight,
                     BackgroundColour = Colors.Primary,
                     Clicked = () => this.Push(new CaptureSetupScreen())
+                },
+
+                new CircularSolidButton
+                {
+                    Anchor = Anchor.BottomRight,
+                    Origin = Anchor.BottomRight,
+                    BackgroundColour = Colors.Tertiary,
+                    Clicked = host.Exit
                 }
             ]
         });

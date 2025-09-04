@@ -2,11 +2,11 @@ using System.Text.Json;
 
 namespace VCollab.Settings;
 
-public record VCollabSettings(
-    SpoutSourceSettings SpoutSourceSettings
-) : IDependencyInjectionCandidate
+public record VCollabSettings : IDependencyInjectionCandidate
 {
     public const string FileName = "vcollab.json";
+
+    public required SpoutSourceSettings? SpoutSourceSettings { get; set; }
 
     private readonly JsonSerializerOptions _serializerOptions = new()
     {
@@ -27,7 +27,10 @@ public record VCollabSettings(
             }
         }
 
-        var newSettings = new VCollabSettings(new SpoutSourceSettings(string.Empty, 0d, 0d, 1d, 1d));
+        var newSettings = new VCollabSettings()
+        {
+            SpoutSourceSettings = null
+        };
 
         newSettings.Save();
 
