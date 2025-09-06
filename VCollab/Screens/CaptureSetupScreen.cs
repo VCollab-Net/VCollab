@@ -30,11 +30,7 @@ public partial class CaptureSetupScreen : FadingScreen
             [
                 _spoutTextureReceiver = new SpoutTextureReceiver(),
 
-                new SpoutSprite(_spoutTextureReceiver)
-                {
-                    RelativeSizeAxes = Axes.Both,
-                    FillMode = FillMode.Fit
-                },
+                new SpoutSprite(_spoutTextureReceiver),
 
                 _selectionRectangle = new SelectionRectangle(
                     new Vector2(350, 600),
@@ -154,7 +150,6 @@ public partial class CaptureSetupScreen : FadingScreen
 
         _senderPicker.SelectionChanged += selection => _spoutTextureReceiver.SenderName = selection;
         _spoutTextureReceiver.TextureUpdated += SpoutTextureUpdated;
-        _selectionRectangle.SelectionChanged += SelectionChanged;
     }
 
     protected override void LoadComplete()
@@ -189,8 +184,6 @@ public partial class CaptureSetupScreen : FadingScreen
                 (float) Math.Round(sourceSettings.RelativeHeight * DrawHeight, MidpointRounding.AwayFromZero)
             );
         }
-
-        _selectionTextInfo.Text = $"{_selectionRectangle.Selection.Width}x{_selectionRectangle.Selection.Height}";
     }
 
     protected override void Update()
@@ -200,27 +193,36 @@ public partial class CaptureSetupScreen : FadingScreen
         // Regularly update sender list
         if (Time.Current - _lastFetchSendersTime > 1000)
         {
-            _senderPicker.SetItem(_spoutTextureReceiver.GetSenderNames());
+            _senderPicker.SetItem(_spoutTextureReceiver.GetSenderNames().Where(name => !name.Contains("VCollab")));
 
             _lastFetchSendersTime = Time.Current;
+        }
+
+        // Update selection text
+        if (_spoutTextureReceiver.Texture is not null)
+        {
+            var textureSize = _spoutTextureReceiver.Texture.Size;
+
+            var width = Math.Round(_selectionRectangle.Selection.Width / DrawWidth * textureSize.X, MidpointRounding.AwayFromZero);
+            var height = Math.Round(_selectionRectangle.Selection.Height / DrawHeight * textureSize.Y, MidpointRounding.AwayFromZero);
+
+            _selectionTextInfo.Text = $"{width}x{height}";
         }
     }
 
     private void SpoutTextureUpdated(Texture? texture)
     {
-        _spoutTextureInfo.Text = texture is not null
-            ? $"{texture.Width}x{texture.Height}"
-            : "N/A";
-    }
-
-    private void SelectionChanged(RectangleF selection)
-    {
-        _selectionTextInfo.Text = $"{selection.Width}x{selection.Height}";
+        Schedule(() =>
+        {
+            _spoutTextureInfo.Text = texture is not null
+                ? $"{texture.Width}x{texture.Height}"
+                : "N/A";
+        });
     }
 
     private void ConfirmButtonClicked()
     {
-        if (_senderPicker.SelectedItem is null)
+        if (_senderPicker.SelectedItem is null || _spoutTextureReceiver.Texture is null)
         {
             return;
         }
@@ -230,10 +232,12 @@ public partial class CaptureSetupScreen : FadingScreen
         // Save changes
         Settings.SpoutSourceSettings = new SpoutSourceSettings(
             _senderPicker.SelectedItem,
-            selection.X / (double)DrawWidth,
-            selection.Y / (double)DrawHeight,
-            selection.Width / (double)DrawWidth,
-            selection.Height / (double)DrawHeight
+            selection.X / DrawWidth,
+            selection.Y / DrawHeight,
+            _spoutTextureReceiver.Texture.Width,
+            _spoutTextureReceiver.Texture.Height,
+            selection.Width / DrawWidth,
+            selection.Height / DrawHeight
         );
 
         Settings.Save();

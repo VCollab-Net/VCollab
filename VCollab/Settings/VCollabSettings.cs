@@ -6,7 +6,11 @@ public record VCollabSettings : IDependencyInjectionCandidate
 {
     public const string FileName = "vcollab.json";
 
+    // Used to invalidate old settings
+    public int SettingsVersion { get; } = 1;
+
     public required SpoutSourceSettings? SpoutSourceSettings { get; set; }
+    public UserModelSettings UserModelSettings { get; set; } = new();
 
     private readonly JsonSerializerOptions _serializerOptions = new()
     {
