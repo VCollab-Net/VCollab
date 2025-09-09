@@ -46,8 +46,9 @@ public partial class VCollabGame : Game
 
         // Set sensible default values for framerate
         Host.MaximumUpdateHz = 120;
+        Host.UpdateThread.InactiveHz = 120;
         Host.MaximumDrawHz = 60;
-        Host.MaximumInactiveHz = 60;
+        Host.DrawThread.InactiveHz = 60;
 
         _screenStack = new ScreenStack();
         _screenStack.Push(new MainScreen());

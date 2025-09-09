@@ -6,12 +6,13 @@ using osu.Framework.Platform;
 using osu.Framework.Threading;
 using SpoutDx.Net.Interop;
 using VCollab.Utils;
+using VCollab.Utils.Graphics;
 using Veldrid;
 using Texture = osu.Framework.Graphics.Textures.Texture;
 
 namespace VCollab.Drawables.Spout;
 
-public partial class SpoutTextureReceiver : Drawable
+public partial class SpoutTextureReceiver : Drawable, ITextureProvider
 {
     public event Action<Texture?>? TextureUpdated;
 

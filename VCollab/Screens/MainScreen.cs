@@ -14,6 +14,7 @@ public partial class MainScreen : FadingScreen
     private SpoutTextureReceiver _userModelSpoutReceiver = null!;
     private DraggableResizableSprite _userResizableSprite = null!;
     private SpoutSprite _userSpoutSprite = null!;
+    private JpegFrameTextureReader _userModelReader = null!;
 
     private Timer _periodicSaveTimer = null!;
 
@@ -27,6 +28,9 @@ public partial class MainScreen : FadingScreen
             [
                 // Main model texture receiver
                 _userModelSpoutReceiver = new SpoutTextureReceiver(),
+
+                // User model reader, this will capture the source Spout2 texture to send it over network
+                _userModelReader = new JpegFrameTextureReader(_userModelSpoutReceiver),
 
                 // Models canvas is a Spout sender
                 _modelsCanvas = new SpoutSenderContainer("VCollab")
@@ -53,7 +57,9 @@ public partial class MainScreen : FadingScreen
                     Origin = Anchor.BottomRight,
                     BackgroundColour = Colors.Tertiary,
                     Clicked = host.Exit
-                }
+                },
+
+                new FrameCountDisplay()
             ]
         });
 

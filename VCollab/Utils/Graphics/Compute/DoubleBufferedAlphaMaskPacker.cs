@@ -1,0 +1,238 @@
+using System.Buffers;
+using System.Runtime.InteropServices;
+using osu.Framework.Extensions;
+using Veldrid;
+
+namespace VCollab.Utils.Graphics.Compute;
+
+public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
+{
+    private const string ComputeShaderFileName = "AlphaPackerShader.hlsl";
+    private readonly Type AlphaMaskPackerType = typeof(DoubleBufferedAlphaMaskPacker);
+
+    // Frame count starts at -2 because the first frame will be available on frame 2
+    public long FrameCount { get; private set; } = -2;
+
+    private readonly GraphicsDevice _graphicsDevice;
+    private readonly ResourceFactory _resourceFactory;
+
+    private Shader _computeShader = null!;
+    private ResourceLayout _layout = null!;
+    private Pipeline _pipeline = null!;
+
+    private Texture? _texture;
+    private DeviceBuffer? _outputBuffer;
+    private DeviceBuffer? _firstStagingBuffer;
+    private DeviceBuffer? _secondStagingBuffer;
+    private DeviceBuffer? _uniformBuffer;
+    private ResourceSet? _resourceSet;
+
+    private Fence? _currentWaitFence;
+    private Fence? _previousWaitFence;
+
+    private bool _writingToFirstBuffer = true;
+    private uint _groupsCount;
+    private uint _outputSizeInBytes;
+
+    private readonly Lock _swappingBuffersLock = new();
+
+    public DoubleBufferedAlphaMaskPacker(GraphicsDevice graphicsDevice)
+    {
+        _graphicsDevice = graphicsDevice;
+        _resourceFactory = graphicsDevice.ResourceFactory;
+
+        Initialize();
+    }
+
+    private void Initialize()
+    {
+        // Load/compile compute shader
+        using var alphaPackerShaderFile =
+            AlphaMaskPackerType.Assembly.GetManifestResourceStream(AlphaMaskPackerType, ComputeShaderFileName)!;
+        using var shaderSourceTextReader = new StreamReader(alphaPackerShaderFile);
+
+        _computeShader = _resourceFactory.CreateShader(new ShaderDescription(
+            ShaderStages.Compute,
+            alphaPackerShaderFile.ReadAllBytesToArray(),
+            "main"
+        ));
+
+        // Pass parameters inside a uniform buffer
+        _uniformBuffer = _resourceFactory.CreateBuffer(new BufferDescription(
+            (uint) Marshal.SizeOf<TextureSize>(),
+            BufferUsage.UniformBuffer | BufferUsage.Dynamic
+        ));
+
+        _layout = _resourceFactory.CreateResourceLayout(new ResourceLayoutDescription(
+            new ResourceLayoutElementDescription("InputTexture", ResourceKind.TextureReadOnly, ShaderStages.Compute),
+            new ResourceLayoutElementDescription("OutputBuffer", ResourceKind.StructuredBufferReadWrite, ShaderStages.Compute),
+            new ResourceLayoutElementDescription("TextureSize", ResourceKind.UniformBuffer, ShaderStages.Compute)
+        ));
+
+        _pipeline = _resourceFactory.CreateComputePipeline(new ComputePipelineDescription(
+            _computeShader,
+            _layout,
+            64, 1, 1
+        ));
+    }
+
+    public bool IsNewFrameAvailable(ref long lastFrameCount)
+    {
+        // First frame is available on frame 2
+        if (FrameCount < 0)
+        {
+            return false;
+        }
+
+        // New frame is only available if frame count changed
+        if (lastFrameCount >= FrameCount)
+        {
+            return false;
+        }
+
+        // If it is a new frame, it is available if the fence has been signaled (this should always be true if frames are long enough)
+        if (_previousWaitFence?.Signaled is true)
+        {
+            lastFrameCount = FrameCount;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public unsafe ReadOnlySpan<byte> ReadAlphaData()
+    {
+        DeviceBuffer? readFromBuffer;
+
+        using (_swappingBuffersLock.EnterScope())
+        {
+            readFromBuffer = _writingToFirstBuffer ? _secondStagingBuffer : _firstStagingBuffer;
+
+            if (readFromBuffer is null || _previousWaitFence?.Signaled is not true)
+            {
+                throw new InvalidOperationException($"No frame could be read, make sure to call {nameof(IsNewFrameAvailable)} first!");
+            }
+        }
+
+        var resource = _graphicsDevice.Map(readFromBuffer, MapMode.Read);
+        var span = new ReadOnlySpan<byte>(resource.Data.ToPointer(), (int)resource.SizeInBytes);
+
+        _graphicsDevice.Unmap(readFromBuffer);
+
+        return span;
+    }
+
+    public void UploadTexture(Texture sourceTexture)
+    {
+        // Present texture from last frame to CPU
+        using (_swappingBuffersLock.EnterScope())
+        {
+            SwapBuffers();
+        }
+
+        ref var targetBuffer = ref _writingToFirstBuffer ? ref _firstStagingBuffer : ref _secondStagingBuffer;
+
+        EnsureBufferFormat(sourceTexture, ref targetBuffer);
+
+        // Execute the alpha packing shader and copy output buffer data to the target staging buffer
+        using var commands = _resourceFactory.CreateCommandList();
+        _currentWaitFence = _resourceFactory.CreateFence(false);
+
+        commands.Begin();
+
+        commands.SetPipeline(_pipeline);
+        commands.SetComputeResourceSet(0, _resourceSet);
+        commands.UpdateBuffer(_uniformBuffer, 0, new TextureSize((int) sourceTexture.Width, (int) sourceTexture.Height));
+        commands.Dispatch(_groupsCount, 1, 1);
+
+        // Copy output to staging buffer
+        commands.CopyBuffer(_outputBuffer, 0, targetBuffer, 0, _outputSizeInBytes);
+
+        commands.End();
+
+        _graphicsDevice.SubmitCommands(commands, _currentWaitFence);
+    }
+
+    private void EnsureBufferFormat(Texture sourceTexture, ref DeviceBuffer? targetBuffer)
+    {
+        var width = sourceTexture.Width;
+        var height = sourceTexture.Height;
+        var pixelCount = width * height;
+
+        // One group is composed of 64 threads and each thread processes 32 pixels
+        _groupsCount = (uint)MathF.Ceiling((float)pixelCount / (64 * 32));
+        _outputSizeInBytes = (uint)MathF.Ceiling((float)pixelCount / 8);
+
+        // Also update target texture
+        _texture = sourceTexture;
+
+        // Ensure target staging buffer has valid size
+        if (targetBuffer is null || targetBuffer.SizeInBytes != _outputSizeInBytes)
+        {
+            targetBuffer?.Dispose();
+            targetBuffer = _resourceFactory.CreateBuffer(new BufferDescription(
+                _outputSizeInBytes,
+                BufferUsage.Staging
+            ));
+        }
+
+        // Ensure output buffer for shader has valid size
+        if (_outputBuffer is null || _outputBuffer.SizeInBytes != _outputSizeInBytes)
+        {
+            _outputBuffer?.Dispose();
+            _outputBuffer = _resourceFactory.CreateBuffer(new BufferDescription(
+                _outputSizeInBytes,
+                BufferUsage.StructuredBufferReadWrite,
+                sizeof(uint)
+            ));
+
+            _resourceSet?.Dispose();
+            _resourceSet = _resourceFactory.CreateResourceSet(new ResourceSetDescription(
+                _layout,
+                _texture, _outputBuffer, _uniformBuffer
+            ));
+        }
+    }
+
+    private void SwapBuffers()
+    {
+        _previousWaitFence?.Dispose();
+        _previousWaitFence = _currentWaitFence;
+
+        _writingToFirstBuffer = !_writingToFirstBuffer;
+
+        FrameCount++;
+    }
+
+    public void Dispose()
+    {
+        _computeShader.Dispose();
+        _layout.Dispose();
+        _pipeline.Dispose();
+        _outputBuffer?.Dispose();
+        _firstStagingBuffer?.Dispose();
+        _secondStagingBuffer?.Dispose();
+        _uniformBuffer?.Dispose();
+        _resourceSet?.Dispose();
+
+        _currentWaitFence?.Dispose();
+        _previousWaitFence?.Dispose();
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private record struct TextureSize
+    {
+        public int Width;
+        public int Height;
+
+        // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
+        private long _padding;
+
+        public TextureSize(int width, int height)
+        {
+            Width = width;
+            Height = height;
+        }
+    }
+}
