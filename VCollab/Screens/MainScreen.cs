@@ -2,6 +2,7 @@ using osu.Framework.Graphics.Primitives;
 using osu.Framework.Platform;
 using osu.Framework.Screens;
 using VCollab.Drawables.Spout;
+using VCollab.Utils.Graphics;
 
 namespace VCollab.Screens;
 
@@ -63,8 +64,9 @@ public partial class MainScreen : FadingScreen
             ]
         });
 
-        // Update user model draw texture
+        // Update user model draw texture and read
         UpdateUserModel();
+        UpdateUserModelTextureReader();
 
         // Set user model offset and scale from settings
         _userResizableSprite.Position = Settings.UserModelSettings.PositionOffset;
@@ -79,6 +81,7 @@ public partial class MainScreen : FadingScreen
 
         // Update spout receiver sender name since settings could have changed there
         UpdateUserModel();
+        UpdateUserModelTextureReader();
     }
 
     private void OnPeriodicSave(object? state)
@@ -106,6 +109,21 @@ public partial class MainScreen : FadingScreen
             var textureSize = new Vector2(sourceSettings.TextureWidth, sourceSettings.TextureHeight);
 
             _userSpoutSprite.UpdateTextureRectangle(textureRectangle, textureSize);
+        }
+    }
+
+    private void UpdateUserModelTextureReader()
+    {
+        if (!string.IsNullOrWhiteSpace(Settings.SpoutSourceSettings?.SenderName))
+        {
+            var sourceSettings = Settings.SpoutSourceSettings;
+
+            var offsetX = (uint) Math.Round(sourceSettings.OffsetX * sourceSettings.TextureWidth, MidpointRounding.AwayFromZero);
+            var offsetY = (uint) Math.Round(sourceSettings.OffsetY * sourceSettings.TextureHeight, MidpointRounding.AwayFromZero);
+            var width = (uint) Math.Round(sourceSettings.RelativeWidth * sourceSettings.TextureWidth, MidpointRounding.AwayFromZero);
+            var height = (uint) Math.Round(sourceSettings.RelativeHeight * sourceSettings.TextureHeight, MidpointRounding.AwayFromZero);
+
+            _userModelReader.TextureRegion = new TextureRegion(offsetX, offsetY, width, height);
         }
     }
 

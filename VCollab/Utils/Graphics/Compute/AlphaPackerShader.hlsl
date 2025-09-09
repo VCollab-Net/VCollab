@@ -1,5 +1,13 @@
 #pragma kernel main
 
+typedef struct texture_size
+{
+    int offsetX;
+    int offsetY;
+    int width;
+    int height;
+} texture_size_t;
+
 // Input texture
 Texture2D<float4> InputTexture;
 
@@ -7,7 +15,7 @@ Texture2D<float4> InputTexture;
 RWStructuredBuffer<uint> OutputBuffer;
 
 // Texture size (passed from C#)
-int2 TextureSize;
+texture_size_t TextureSize;
 
 [numthreads(64, 1, 1)] // One thread processes 32 pixels
 void main(uint3 id : SV_DispatchThreadID)
@@ -15,7 +23,7 @@ void main(uint3 id : SV_DispatchThreadID)
     uint threadIndex = id.x;
 
     // Compute starting pixel index for this thread
-    uint totalPixels = TextureSize.x * TextureSize.y;
+    uint totalPixels = TextureSize.width * TextureSize.height;
     uint startPixelIndex = threadIndex * 32;
 
     // Make sure we don't read out of bounds
@@ -32,7 +40,10 @@ void main(uint3 id : SV_DispatchThreadID)
     for (uint i = 0; i < pixelsToProcess; i++)
     {
         uint pixelIndex = startPixelIndex + i;
-        int2 pixelCoord = int2(pixelIndex % TextureSize.x, pixelIndex / TextureSize.x);
+        int2 pixelCoord = int2(
+            pixelIndex % TextureSize.width + TextureSize.offsetX,
+            pixelIndex / TextureSize.width + TextureSize.offsetY
+        );
 
         float4 pixelValue = InputTexture.Load(int3(pixelCoord, 0));
         float alpha = pixelValue.a;

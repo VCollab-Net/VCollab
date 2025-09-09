@@ -33,6 +33,7 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
     private bool _writingToFirstBuffer = true;
     private uint _groupsCount;
     private uint _outputSizeInBytes;
+    private uint _regionOutputSizeInBytes;
 
     private readonly Lock _swappingBuffersLock = new();
 
@@ -116,14 +117,16 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
         }
 
         var resource = _graphicsDevice.Map(readFromBuffer, MapMode.Read);
-        var span = new ReadOnlySpan<byte>(resource.Data.ToPointer(), (int)resource.SizeInBytes);
+        var span = new ReadOnlySpan<byte>(resource.Data.ToPointer(), (int)_regionOutputSizeInBytes);
 
         _graphicsDevice.Unmap(readFromBuffer);
 
+        // TODO This could be more optimized if it was possible to reduce the device buffers size
+        // since it only contains leading 0's but for some reason reducing the buffers size mess up with the packer
         return span;
     }
 
-    public void UploadTexture(Texture sourceTexture)
+    public void UploadTexture(Texture sourceTexture, TextureRegion textureRegion)
     {
         // Present texture from last frame to CPU
         using (_swappingBuffersLock.EnterScope())
@@ -133,7 +136,12 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
 
         ref var targetBuffer = ref _writingToFirstBuffer ? ref _firstStagingBuffer : ref _secondStagingBuffer;
 
-        EnsureBufferFormat(sourceTexture, ref targetBuffer);
+        EnsureBufferFormat(sourceTexture, ref targetBuffer, textureRegion);
+
+        var textureSize = new TextureSize(
+            (int) textureRegion.OffsetX, (int) textureRegion.OffsetY,
+            (int) textureRegion.Width, (int) textureRegion.Height
+        );
 
         // Execute the alpha packing shader and copy output buffer data to the target staging buffer
         using var commands = _resourceFactory.CreateCommandList();
@@ -143,7 +151,7 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
 
         commands.SetPipeline(_pipeline);
         commands.SetComputeResourceSet(0, _resourceSet);
-        commands.UpdateBuffer(_uniformBuffer, 0, new TextureSize((int) sourceTexture.Width, (int) sourceTexture.Height));
+        commands.UpdateBuffer(_uniformBuffer, 0, textureSize);
         commands.Dispatch(_groupsCount, 1, 1);
 
         // Copy output to staging buffer
@@ -154,15 +162,26 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
         _graphicsDevice.SubmitCommands(commands, _currentWaitFence);
     }
 
-    private void EnsureBufferFormat(Texture sourceTexture, ref DeviceBuffer? targetBuffer)
+    private void EnsureBufferFormat(Texture sourceTexture, ref DeviceBuffer? targetBuffer, TextureRegion textureRegion)
     {
         var width = sourceTexture.Width;
         var height = sourceTexture.Height;
         var pixelCount = width * height;
 
+        // Only dispatch for required region size
+        var regionPixels = textureRegion.Width * textureRegion.Height;
+
         // One group is composed of 64 threads and each thread processes 32 pixels
-        _groupsCount = (uint)MathF.Ceiling((float)pixelCount / (64 * 32));
+        _groupsCount = (uint)MathF.Ceiling((float)regionPixels / (64 * 32));
         _outputSizeInBytes = (uint)MathF.Ceiling((float)pixelCount / 8);
+        _regionOutputSizeInBytes = (uint)MathF.Ceiling((float)regionPixels / 8);
+
+        // Padding to uint size
+        var outputBufferSize = _outputSizeInBytes;
+        if (outputBufferSize % sizeof(uint) != 0)
+        {
+            outputBufferSize += sizeof(uint) - (outputBufferSize % sizeof(uint));
+        }
 
         // Also update target texture
         _texture = sourceTexture;
@@ -178,11 +197,11 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
         }
 
         // Ensure output buffer for shader has valid size
-        if (_outputBuffer is null || _outputBuffer.SizeInBytes != _outputSizeInBytes)
+        if (_outputBuffer is null || _outputBuffer.SizeInBytes != outputBufferSize)
         {
             _outputBuffer?.Dispose();
             _outputBuffer = _resourceFactory.CreateBuffer(new BufferDescription(
-                _outputSizeInBytes,
+                outputBufferSize,
                 BufferUsage.StructuredBufferReadWrite,
                 sizeof(uint)
             ));
@@ -223,14 +242,15 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
     [StructLayout(LayoutKind.Sequential)]
     private record struct TextureSize
     {
+        public int OffsetX;
+        public int OffsetY;
         public int Width;
         public int Height;
 
-        // ReSharper disable once PrivateFieldCanBeConvertedToLocalVariable
-        private long _padding;
-
-        public TextureSize(int width, int height)
+        public TextureSize(int offsetX, int offsetY, int width, int height)
         {
+            OffsetX = offsetX;
+            OffsetY = offsetY;
             Width = width;
             Height = height;
         }

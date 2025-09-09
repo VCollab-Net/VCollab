@@ -73,12 +73,12 @@ public sealed class DoubleBufferedTextureReader : IDisposable
 
         _graphicsDevice.Unmap(readFromTexture);
 
-        textureInfo = new TextureInfo(readFromTexture.Width, readFromTexture.Height, readFromTexture.Format);
+        textureInfo = new TextureInfo(readFromTexture.Width, readFromTexture.Height, readFromTexture.Format, resource.RowPitch);
 
         return span;
     }
 
-    public void UploadTexture(Texture sourceTexture)
+    public void UploadTexture(Texture sourceTexture, TextureRegion textureRegion)
     {
         // Present texture from last frame to CPU
         using (_swappingBuffersLock.EnterScope())
@@ -88,29 +88,38 @@ public sealed class DoubleBufferedTextureReader : IDisposable
 
         ref var targetTexture = ref _uploadingToFirstBuffer ? ref _firstStagingTexture : ref _secondStagingTexture;
 
-        EnsureTextureFormat(sourceTexture, ref targetTexture);
+        EnsureTextureFormat(sourceTexture, ref targetTexture, textureRegion);
 
         // Send the gpu commands to copy source texture to target staging texture
         using var commands = _resourceFactory.CreateCommandList();
         _currentWaitFence = _resourceFactory.CreateFence(false);
 
         commands.Begin();
-        commands.CopyTexture(sourceTexture, targetTexture, 0, 0);
+        commands.CopyTexture(
+            sourceTexture,
+            textureRegion.OffsetX,
+            textureRegion.OffsetY,0, 0, 0,
+            targetTexture,
+            0, 0, 0, 0, 0,
+            textureRegion.Width,
+            textureRegion.Height,
+            1, 1
+        );
         commands.End();
 
         _graphicsDevice.SubmitCommands(commands, _currentWaitFence);
     }
 
-    private void EnsureTextureFormat(Texture sourceTexture, ref Texture? targetTexture)
+    private void EnsureTextureFormat(Texture sourceTexture, ref Texture? targetTexture, TextureRegion textureRegion)
     {
         if (targetTexture is null
-            || targetTexture.Width != sourceTexture.Width
-            || targetTexture.Height != sourceTexture.Height
+            || targetTexture.Width != textureRegion.Width
+            || targetTexture.Height != textureRegion.Height
             || targetTexture.Format != sourceTexture.Format)
         {
             targetTexture = _resourceFactory.CreateTexture(TextureDescription.Texture2D(
-                sourceTexture.Width,
-                sourceTexture.Height,
+                textureRegion.Width,
+                textureRegion.Height,
                 1,
                 1,
                 sourceTexture.Format,

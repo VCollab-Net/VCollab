@@ -14,6 +14,10 @@ namespace VCollab.Drawables;
 public abstract partial class FrameTextureReader : Drawable
 {
     public long ReadIntervalMilliseconds { get; }
+    public TextureRegion? TextureRegion { get; set; }
+
+    [Resolved]
+    private VCollabSettings Settings { get; set; } = null!;
 
     protected DoubleBufferedTextureReader TextureReader = null!;
     protected DoubleBufferedAlphaMaskPacker AlphaPacker = null!;
@@ -63,7 +67,7 @@ public abstract partial class FrameTextureReader : Drawable
 
     protected override void Update()
     {
-        if (!_isInitialized)
+        if (!_isInitialized || TextureRegion is null)
         {
             return;
         }
@@ -90,14 +94,14 @@ public abstract partial class FrameTextureReader : Drawable
 
         var osuTexture = _textureProvider.Texture;
 
-        if (osuTexture?.NativeTexture is not IVeldridTexture veldridTexture)
+        if (osuTexture?.NativeTexture is not IVeldridTexture veldridTexture || TextureRegion is not { } textureRegion)
         {
             return;
         }
 
         var toRead = veldridTexture.GetResourceList()[0].Texture;
 
-        TextureReader.UploadTexture(toRead);
-        AlphaPacker.UploadTexture(toRead);
+        TextureReader.UploadTexture(toRead, textureRegion);
+        AlphaPacker.UploadTexture(toRead, textureRegion);
     }
 }

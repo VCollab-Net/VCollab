@@ -67,7 +67,7 @@ public partial class JpegFrameTextureReader : FrameTextureReader
 
         // var image = Image.LoadPixelData<L8>(alphaData, (int)_lastTextureInfo.Width / 8, (int)_lastTextureInfo.Height);
         // image.Mutate(i => i.Resize((int)_lastTextureInfo.Width, (int)_lastTextureInfo.Height, new NearestNeighborResampler()));
-
+        //
         // await image.SaveAsPngAsync(Path.Combine("tmp", $"frame-{frameCount:D4}-alpha.png"));
     }
 
@@ -79,7 +79,7 @@ public partial class JpegFrameTextureReader : FrameTextureReader
 
         var jpegData = _jpegCompressor.CompressShared(
             textureData,
-            (int) (textureInfo.Width * Marshal.SizeOf<Rgba32>()),
+            (int) textureInfo.RowPitch,
             (int) textureInfo.Width,
             (int) textureInfo.Height,
             JpegUtils.VeldridToJpegPixelFormat(textureInfo.PixelFormat),
