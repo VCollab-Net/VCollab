@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using osu.Framework.Platform;
 
 namespace VCollab.Settings;
 
@@ -17,23 +19,36 @@ public record VCollabSettings : IDependencyInjectionCandidate
         WriteIndented = true
     };
 
-    public static VCollabSettings Load()
+    private Storage _storage = null!;
+
+    [JsonConstructor]
+    private VCollabSettings()
     {
-        if (File.Exists(FileName))
+
+    }
+
+    public static VCollabSettings Load(Storage storage)
+    {
+        if (storage.Exists(FileName))
         {
+            var settingsPath = storage.GetFullPath(FileName, true);
+
             var settings = JsonSerializer.Deserialize<VCollabSettings>(
-                File.ReadAllText(FileName)
+                File.ReadAllText(settingsPath)
             );
 
             if (settings is not null)
             {
+                settings._storage = storage;
+
                 return settings;
             }
         }
 
-        var newSettings = new VCollabSettings()
+        var newSettings = new VCollabSettings
         {
-            SpoutSourceSettings = null
+            SpoutSourceSettings = null,
+            _storage = storage
         };
 
         newSettings.Save();
@@ -43,6 +58,6 @@ public record VCollabSettings : IDependencyInjectionCandidate
 
     public void Save()
     {
-        File.WriteAllText(FileName, JsonSerializer.Serialize(this, _serializerOptions));
+        File.WriteAllText(_storage.GetFullPath(FileName), JsonSerializer.Serialize(this, _serializerOptions));
     }
 }

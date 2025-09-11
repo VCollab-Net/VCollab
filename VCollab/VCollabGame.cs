@@ -27,7 +27,7 @@ public partial class VCollabGame : Game
         var dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
 
         // Read settings
-        var settings = VCollabSettings.Load();
+        var settings = VCollabSettings.Load(Host.Storage);
 
         dependencies.Cache(settings);
 
