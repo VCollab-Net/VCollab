@@ -1,5 +1,3 @@
-using System.Buffers;
-using System.Runtime.InteropServices;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -14,56 +12,30 @@ namespace VCollab.Drawables;
 public partial class JpegFrameTextureReader : FrameTextureReader
 {
     private readonly TJCompressor _jpegCompressor;
-    private readonly ArrayBufferWriter<byte> _textureBufferWriter;
-    private readonly ArrayBufferWriter<byte> _alphaBufferWriter;
 
-    private TextureInfo _lastTextureInfo;
     private ReadOnlyMemory<byte> _lastTextureData;
     private ReadOnlyMemory<byte> _lastAlphaData;
+    private TextureInfo _lastTextureInfo;
 
-    public JpegFrameTextureReader(ITextureProvider textureProvider) : base(textureProvider, 20)
+    public JpegFrameTextureReader(ITextureProvider textureProvider) : base(textureProvider, 25)
     {
         _jpegCompressor = new TJCompressor();
-        _textureBufferWriter = new ArrayBufferWriter<byte>();
-        _alphaBufferWriter = new ArrayBufferWriter<byte>();
     }
 
-    protected override void OnFrameAvailable()
+    protected override void OnFrameAvailable(ReadOnlyMemory<byte> textureData, ReadOnlyMemory<byte> alphaData, TextureInfo textureInfo)
     {
-        // Copy frame data and run jpeg encode task on another thread to free up Update() thread
-        var textureData = TextureReader.ReadTextureData(out var textureInfo);
-
-        _textureBufferWriter.ResetWrittenCount();
-
-        var textureCopySpan = _textureBufferWriter.GetSpan(textureData.Length);
-        textureData.CopyTo(textureCopySpan);
-
-        _textureBufferWriter.Advance(textureData.Length);
-
-        _lastTextureData = _textureBufferWriter.WrittenMemory;
+        _lastTextureData = textureData;
+        _lastAlphaData = alphaData;
         _lastTextureInfo = textureInfo;
 
         Task.Run(WriteTextureDataToJpeg);
-
-        // Also copy alpha data
-        var alphaData = AlphaPacker.ReadAlphaData();
-
-        _alphaBufferWriter.ResetWrittenCount();
-
-        var alphaCopySpan = _alphaBufferWriter.GetSpan(alphaData.Length);
-        alphaData.CopyTo(alphaCopySpan);
-
-        _alphaBufferWriter.Advance(alphaData.Length);
-
-        _lastAlphaData = _alphaBufferWriter.WrittenMemory;
-
         Task.Run(WriteAlphaDataToImage);
     }
 
     private async Task WriteAlphaDataToImage()
     {
         var alphaData = _lastAlphaData.Span;
-        var frameCount = AlphaLastFrameCount;
+        var frameCount = FramesCount;
 
         // var image = Image.LoadPixelData<L8>(alphaData, (int)_lastTextureInfo.Width / 8, (int)_lastTextureInfo.Height);
         // image.Mutate(i => i.Resize((int)_lastTextureInfo.Width, (int)_lastTextureInfo.Height, new NearestNeighborResampler()));
@@ -75,7 +47,7 @@ public partial class JpegFrameTextureReader : FrameTextureReader
     {
         var textureData = _lastTextureData.Span;
         var textureInfo = _lastTextureInfo;
-        var frameCount = TextureLastFrameCount;
+        var frameCount = FramesCount;
 
         var jpegData = _jpegCompressor.CompressShared(
             textureData,
@@ -89,5 +61,15 @@ public partial class JpegFrameTextureReader : FrameTextureReader
         );
 
         // File.WriteAllBytes(Path.Combine("tmp", $"frame-{frameCount:D4}-texture.jpg"), jpegData);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _jpegCompressor.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 }

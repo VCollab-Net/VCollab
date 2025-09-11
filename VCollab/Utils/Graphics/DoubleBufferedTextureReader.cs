@@ -3,7 +3,7 @@ using Veldrid;
 namespace VCollab.Utils.Graphics;
 
 /// <summary>
-/// Read from a texture using alternating staging buffers. This class does not check for cross-frame concurrency.
+/// Read from a texture using alternating staging buffers. Always call ProcessFrame on the Draw thread!
 /// </summary>
 public sealed class DoubleBufferedTextureReader : IDisposable
 {
@@ -13,15 +13,8 @@ public sealed class DoubleBufferedTextureReader : IDisposable
     private readonly GraphicsDevice _graphicsDevice;
     private readonly ResourceFactory _resourceFactory;
 
-    private Texture? _firstStagingTexture;
-    private Texture? _secondStagingTexture;
-
-    private Fence? _currentWaitFence;
-    private Fence? _previousWaitFence;
-
-    private bool _uploadingToFirstBuffer = true;
-
-    private readonly Lock _swappingBuffersLock = new();
+    private readonly BufferedResource<Texture>[] _stagingTextures = [new(), new()];
+    private int _gpuStagingIndex = 0;
 
     public DoubleBufferedTextureReader(GraphicsDevice graphicsDevice)
     {
@@ -29,70 +22,18 @@ public sealed class DoubleBufferedTextureReader : IDisposable
         _resourceFactory = graphicsDevice.ResourceFactory;
     }
 
-    public bool IsNewFrameAvailable(ref long lastFrameCount)
+    public unsafe ReadOnlySpan<byte> ProcessFrame(Texture sourceTexture, TextureRegion textureRegion, out TextureInfo textureInfo)
     {
-        // First frame is available on frame 2
-        if (FrameCount < 0)
-        {
-            return false;
-        }
-
-        // New frame is only available if frame count changed
-        if (lastFrameCount >= FrameCount)
-        {
-            return false;
-        }
-
-        // If it is a new frame, it is available if the fence has been signaled (this should always be true if frames are long enough)
-        if (_previousWaitFence?.Signaled is true)
-        {
-            lastFrameCount = FrameCount;
-
-            return true;
-        }
-
-        return false;
-    }
-
-    public unsafe ReadOnlySpan<byte> ReadTextureData(out TextureInfo textureInfo)
-    {
-        Texture? readFromTexture;
-
-        using (_swappingBuffersLock.EnterScope())
-        {
-            readFromTexture = _uploadingToFirstBuffer ? _secondStagingTexture : _firstStagingTexture;
-
-            if (readFromTexture is null || _previousWaitFence?.Signaled is not true)
-            {
-                throw new InvalidOperationException($"No frame could be read, make sure to call {nameof(IsNewFrameAvailable)} first!");
-            }
-        }
-
-        var resource = _graphicsDevice.Map(readFromTexture, MapMode.Read);
-        var span = new ReadOnlySpan<byte>(resource.Data.ToPointer(), (int)resource.SizeInBytes);
-
-        _graphicsDevice.Unmap(readFromTexture);
-
-        textureInfo = new TextureInfo(readFromTexture.Width, readFromTexture.Height, readFromTexture.Format, resource.RowPitch);
-
-        return span;
-    }
-
-    public void UploadTexture(Texture sourceTexture, TextureRegion textureRegion)
-    {
-        // Present texture from last frame to CPU
-        using (_swappingBuffersLock.EnterScope())
-        {
-            SwapBuffers();
-        }
-
-        ref var targetTexture = ref _uploadingToFirstBuffer ? ref _firstStagingTexture : ref _secondStagingTexture;
+        // Queue GPU read
+        var targetBufferedResource = _stagingTextures[_gpuStagingIndex];
+        ref var targetTexture = ref targetBufferedResource.Resource;
 
         EnsureTextureFormat(sourceTexture, ref targetTexture, textureRegion);
 
         // Send the gpu commands to copy source texture to target staging texture
         using var commands = _resourceFactory.CreateCommandList();
-        _currentWaitFence = _resourceFactory.CreateFence(false);
+        targetBufferedResource.WaitFence?.Dispose();
+        targetBufferedResource.WaitFence = _resourceFactory.CreateFence(false);
 
         commands.Begin();
         commands.CopyTexture(
@@ -107,7 +48,34 @@ public sealed class DoubleBufferedTextureReader : IDisposable
         );
         commands.End();
 
-        _graphicsDevice.SubmitCommands(commands, _currentWaitFence);
+        _graphicsDevice.SubmitCommands(commands, targetBufferedResource.WaitFence);
+
+        // Read previous frame staging texture on CPU if available (should most often be the case)
+        var readbackResource = _stagingTextures[(_gpuStagingIndex + 1) % _stagingTextures.Length];
+
+        ReadOnlySpan<byte> data;
+        if (readbackResource.Resource is not null && readbackResource.WaitFence?.Signaled is true)
+        {
+            var readFromTexture = readbackResource.Resource;
+
+            var resource = _graphicsDevice.Map(readFromTexture, MapMode.Read);
+            var span = new ReadOnlySpan<byte>(resource.Data.ToPointer(), (int)resource.SizeInBytes);
+
+            _graphicsDevice.Unmap(readFromTexture);
+
+            data = span;
+            textureInfo = new TextureInfo(readFromTexture.Width, readFromTexture.Height, readFromTexture.Format, resource.RowPitch);
+        }
+        else
+        {
+            data = ReadOnlySpan<byte>.Empty;
+            textureInfo = default;
+        }
+
+        // Swap buffers for next frame
+        SwapBuffers();
+
+        return data;
     }
 
     private void EnsureTextureFormat(Texture sourceTexture, ref Texture? targetTexture, TextureRegion textureRegion)
@@ -130,20 +98,16 @@ public sealed class DoubleBufferedTextureReader : IDisposable
 
     private void SwapBuffers()
     {
-        _previousWaitFence?.Dispose();
-        _previousWaitFence = _currentWaitFence;
-
-        _uploadingToFirstBuffer = !_uploadingToFirstBuffer;
+        _gpuStagingIndex = (_gpuStagingIndex + 1) % _stagingTextures.Length;
 
         FrameCount++;
     }
 
     public void Dispose()
     {
-        _firstStagingTexture?.Dispose();
-        _secondStagingTexture?.Dispose();
-
-        _currentWaitFence?.Dispose();
-        _previousWaitFence?.Dispose();
+        foreach (var bufferedResource in _stagingTextures)
+        {
+            bufferedResource.Dispose();
+        }
     }
 }

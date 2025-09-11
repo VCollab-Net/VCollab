@@ -1,10 +1,11 @@
+using System.Buffers;
 using System.Diagnostics;
 using osu.Framework.Graphics.Veldrid;
 using osu.Framework.Graphics.Veldrid.Textures;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Threading;
-using TurboJpegWrapper;
+using VCollab.Utils.Extensions;
 using VCollab.Utils.Graphics;
 using VCollab.Utils.Graphics.Compute;
 using Veldrid;
@@ -13,28 +14,34 @@ namespace VCollab.Drawables;
 
 public abstract partial class FrameTextureReader : Drawable
 {
-    public long ReadIntervalMilliseconds { get; }
+    public long MinimumReadIntervalMilliseconds { get; }
+
+    public long FramesCount { get; private set; } = -1;
+    /// <summary>
+    /// Frames skipped because CPU did not receive data in time. Starts at -1 because CPU is always lagging behind
+    /// by one frame since we're using double buffering.
+    /// </summary>
+    public long FramesSkipCount { get; private set; } = -1;
+
     public TextureRegion? TextureRegion { get; set; }
 
-    [Resolved]
-    private VCollabSettings Settings { get; set; } = null!;
-
-    protected DoubleBufferedTextureReader TextureReader = null!;
-    protected DoubleBufferedAlphaMaskPacker AlphaPacker = null!;
+    private DoubleBufferedTextureReader _textureReader = null!;
+    private DoubleBufferedAlphaMaskPacker _alphaPacker = null!;
     private Scheduler _drawThreadScheduler = null!;
 
     private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
     private readonly ITextureProvider _textureProvider;
 
-    protected long TextureLastFrameCount = 0;
-    protected long AlphaLastFrameCount = 0;
+    private readonly ArrayBufferWriter<byte> _textureBufferWriter = new();
+    private readonly ArrayBufferWriter<byte> _alphaBufferWriter = new();
+
     private long _lastReadTime = 0;
     private bool _isInitialized = false;
 
     protected FrameTextureReader(ITextureProvider textureProvider, long millisecondsInterval)
     {
         _textureProvider = textureProvider;
-        ReadIntervalMilliseconds = millisecondsInterval;
+        MinimumReadIntervalMilliseconds = millisecondsInterval;
 
         // Nothing to draw
         Size = Vector2.Zero;
@@ -59,8 +66,8 @@ public abstract partial class FrameTextureReader : Drawable
 
         _drawThreadScheduler = host.DrawThread.Scheduler;
 
-        TextureReader = new DoubleBufferedTextureReader(renderer.Device);
-        AlphaPacker = new DoubleBufferedAlphaMaskPacker(renderer.Device);
+        _textureReader = new DoubleBufferedTextureReader(renderer.Device);
+        _alphaPacker = new DoubleBufferedAlphaMaskPacker(renderer.Device);
 
         _isInitialized = true;
     }
@@ -72,24 +79,19 @@ public abstract partial class FrameTextureReader : Drawable
             return;
         }
 
-        // Schedule texture and alpha read if last read time is old enough
-        if (_stopwatch.ElapsedMilliseconds - _lastReadTime >= ReadIntervalMilliseconds)
-        {
-            _drawThreadScheduler.AddOnce(ReadTextureAndAlpha);
-        }
-
-        // Execute read task if new frame is available
-        if (TextureReader.IsNewFrameAvailable(ref TextureLastFrameCount) &&
-            AlphaPacker.IsNewFrameAvailable(ref AlphaLastFrameCount))
-        {
-            OnFrameAvailable();
-        }
+        _drawThreadScheduler.AddOnce(ReadTextureAndAlpha);
     }
 
-    protected abstract void OnFrameAvailable();
+    protected abstract void OnFrameAvailable(ReadOnlyMemory<byte> textureData, ReadOnlyMemory<byte> alphaData, TextureInfo textureInfo);
 
     private void ReadTextureAndAlpha()
     {
+        // Skip texture and alpha read if last read time is not old enough
+        if (_stopwatch.ElapsedMilliseconds - _lastReadTime < MinimumReadIntervalMilliseconds)
+        {
+            return;
+        }
+
         _lastReadTime = _stopwatch.ElapsedMilliseconds;
 
         var osuTexture = _textureProvider.Texture;
@@ -101,7 +103,35 @@ public abstract partial class FrameTextureReader : Drawable
 
         var toRead = veldridTexture.GetResourceList()[0].Texture;
 
-        TextureReader.UploadTexture(toRead, textureRegion);
-        AlphaPacker.UploadTexture(toRead, textureRegion);
+        // Read and copy texture and alpha data
+        var textureData = _textureReader.ProcessFrame(toRead, textureRegion, out var textureInfo);
+        var alphaData = _alphaPacker.ProcessFrame(toRead, textureRegion);
+
+        // Skip frame if returned data is empty, cpu most likely did not receive data in time, or it's the first frame
+        if (textureData.IsEmpty || alphaData.IsEmpty)
+        {
+            FramesSkipCount++;
+
+            return;
+        }
+
+        // Present the new frame to consumer
+        FramesCount++;
+
+        var textureDataMemory = textureData.WriteToBufferMemory(_textureBufferWriter);
+        var alphaDataMemory = alphaData.WriteToBufferMemory(_alphaBufferWriter);
+
+        OnFrameAvailable(textureDataMemory, alphaDataMemory, textureInfo);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _textureReader.Dispose();
+            _alphaPacker.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 }

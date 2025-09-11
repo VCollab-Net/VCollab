@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Runtime.InteropServices;
 using osu.Framework.Extensions;
 using Veldrid;
@@ -22,20 +21,15 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
 
     private Texture? _texture;
     private DeviceBuffer? _outputBuffer;
-    private DeviceBuffer? _firstStagingBuffer;
-    private DeviceBuffer? _secondStagingBuffer;
     private DeviceBuffer? _uniformBuffer;
     private ResourceSet? _resourceSet;
 
-    private Fence? _currentWaitFence;
-    private Fence? _previousWaitFence;
+    private readonly BufferedResource<DeviceBuffer>[] _stagingBuffers = [new(), new()];
+    private int _gpuStagingIndex = 0;
 
-    private bool _writingToFirstBuffer = true;
     private uint _groupsCount;
     private uint _outputSizeInBytes;
     private uint _regionOutputSizeInBytes;
-
-    private readonly Lock _swappingBuffersLock = new();
 
     public DoubleBufferedAlphaMaskPacker(GraphicsDevice graphicsDevice)
     {
@@ -77,64 +71,11 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
         ));
     }
 
-    public bool IsNewFrameAvailable(ref long lastFrameCount)
+    public unsafe ReadOnlySpan<byte> ProcessFrame(Texture sourceTexture, TextureRegion textureRegion)
     {
-        // First frame is available on frame 2
-        if (FrameCount < 0)
-        {
-            return false;
-        }
-
-        // New frame is only available if frame count changed
-        if (lastFrameCount >= FrameCount)
-        {
-            return false;
-        }
-
-        // If it is a new frame, it is available if the fence has been signaled (this should always be true if frames are long enough)
-        if (_previousWaitFence?.Signaled is true)
-        {
-            lastFrameCount = FrameCount;
-
-            return true;
-        }
-
-        return false;
-    }
-
-    public unsafe ReadOnlySpan<byte> ReadAlphaData()
-    {
-        DeviceBuffer? readFromBuffer;
-
-        using (_swappingBuffersLock.EnterScope())
-        {
-            readFromBuffer = _writingToFirstBuffer ? _secondStagingBuffer : _firstStagingBuffer;
-
-            if (readFromBuffer is null || _previousWaitFence?.Signaled is not true)
-            {
-                throw new InvalidOperationException($"No frame could be read, make sure to call {nameof(IsNewFrameAvailable)} first!");
-            }
-        }
-
-        var resource = _graphicsDevice.Map(readFromBuffer, MapMode.Read);
-        var span = new ReadOnlySpan<byte>(resource.Data.ToPointer(), (int)_regionOutputSizeInBytes);
-
-        _graphicsDevice.Unmap(readFromBuffer);
-
-        // TODO This could be more optimized if it was possible to reduce the device buffers size
-        // since it only contains leading 0's but for some reason reducing the buffers size mess up with the packer
-        return span;
-    }
-
-    public void UploadTexture(Texture sourceTexture, TextureRegion textureRegion)
-    {
-        // Present texture from last frame to CPU
-        using (_swappingBuffersLock.EnterScope())
-        {
-            SwapBuffers();
-        }
-
-        ref var targetBuffer = ref _writingToFirstBuffer ? ref _firstStagingBuffer : ref _secondStagingBuffer;
+        // Dispatch shader and queue gpu read
+        var targetResource = _stagingBuffers[_gpuStagingIndex];
+        ref var targetBuffer = ref targetResource.Resource;
 
         EnsureBufferFormat(sourceTexture, ref targetBuffer, textureRegion);
 
@@ -145,7 +86,8 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
 
         // Execute the alpha packing shader and copy output buffer data to the target staging buffer
         using var commands = _resourceFactory.CreateCommandList();
-        _currentWaitFence = _resourceFactory.CreateFence(false);
+        targetResource.WaitFence?.Dispose();
+        targetResource.WaitFence = _resourceFactory.CreateFence(false);
 
         commands.Begin();
 
@@ -159,7 +101,34 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
 
         commands.End();
 
-        _graphicsDevice.SubmitCommands(commands, _currentWaitFence);
+        _graphicsDevice.SubmitCommands(commands, targetResource.WaitFence);
+
+        // Read previous frame staging texture on CPU if available (should most often be the case)
+
+        // TODO This could be more optimized if it was possible to reduce the device buffers size
+        // since it only contains leading 0's but for some reason reducing the buffers size mess up with the packer
+        var readbackResource = _stagingBuffers[(_gpuStagingIndex + 1) % _stagingBuffers.Length];
+
+        ReadOnlySpan<byte> data;
+        if (readbackResource.Resource is not null && readbackResource.WaitFence?.Signaled is true)
+        {
+            var readFromTexture = readbackResource.Resource;
+
+            var resource = _graphicsDevice.Map(readFromTexture, MapMode.Read);
+            var span = new ReadOnlySpan<byte>(resource.Data.ToPointer(), (int)_regionOutputSizeInBytes);
+
+            _graphicsDevice.Unmap(readFromTexture);
+
+            data = span;
+        }
+        else
+        {
+            data = ReadOnlySpan<byte>.Empty;
+        }
+
+        SwapBuffers();
+
+        return data;
     }
 
     private void EnsureBufferFormat(Texture sourceTexture, ref DeviceBuffer? targetBuffer, TextureRegion textureRegion)
@@ -216,10 +185,7 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
 
     private void SwapBuffers()
     {
-        _previousWaitFence?.Dispose();
-        _previousWaitFence = _currentWaitFence;
-
-        _writingToFirstBuffer = !_writingToFirstBuffer;
+        _gpuStagingIndex = (_gpuStagingIndex + 1) % _stagingBuffers.Length;
 
         FrameCount++;
     }
@@ -230,13 +196,13 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
         _layout.Dispose();
         _pipeline.Dispose();
         _outputBuffer?.Dispose();
-        _firstStagingBuffer?.Dispose();
-        _secondStagingBuffer?.Dispose();
         _uniformBuffer?.Dispose();
         _resourceSet?.Dispose();
 
-        _currentWaitFence?.Dispose();
-        _previousWaitFence?.Dispose();
+        foreach (var bufferedResource in _stagingBuffers)
+        {
+            bufferedResource.Dispose();
+        }
     }
 
     [StructLayout(LayoutKind.Sequential)]

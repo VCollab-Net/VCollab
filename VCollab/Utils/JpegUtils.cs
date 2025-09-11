@@ -11,7 +11,7 @@ public static class JpegUtils
 
         PixelFormat.B8G8R8A8UNorm => TJPixelFormats.TJPF_BGRX,
 
-        _ => throw new ArgumentException($"Cannot convert pixel format '{pixelFormat}' to Jpeg one, it may be a pixel format that uses more than 4 bytes per color channel",
+        _ => throw new ArgumentException($"Cannot convert pixel format '{pixelFormat}' to Jpeg one, it may be a pixel format that uses more than 1 byte per color channel",
             nameof(pixelFormat))
     };
 }
