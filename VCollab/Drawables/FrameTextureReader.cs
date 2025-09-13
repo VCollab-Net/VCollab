@@ -4,6 +4,7 @@ using osu.Framework.Graphics.Veldrid;
 using osu.Framework.Graphics.Veldrid.Textures;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
+using osu.Framework.Statistics;
 using osu.Framework.Threading;
 using VCollab.Utils.Extensions;
 using VCollab.Utils.Graphics;
@@ -111,6 +112,8 @@ public abstract partial class FrameTextureReader : Drawable
         if (textureData.IsEmpty || alphaData.IsEmpty)
         {
             FramesSkipCount++;
+
+            GlobalStatistics.Get<long>(nameof(FrameTextureReader), nameof(FramesSkipCount)).Value = FramesSkipCount;
 
             return;
         }
