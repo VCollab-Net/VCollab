@@ -2,12 +2,16 @@ using osu.Framework.Graphics.Primitives;
 using osu.Framework.Platform;
 using osu.Framework.Screens;
 using VCollab.Drawables.Spout;
+using VCollab.Networking;
 using VCollab.Utils.Graphics;
 
 namespace VCollab.Screens;
 
 public partial class MainScreen : FadingScreen
 {
+    [Cached]
+    protected readonly NetworkManager NetworkManager = new();
+
     [Resolved]
     private VCollabSettings Settings { get; set; } = null!;
 
@@ -16,6 +20,7 @@ public partial class MainScreen : FadingScreen
     private DraggableResizableSprite _userResizableSprite = null!;
     private SpoutSprite _userSpoutSprite = null!;
     private JpegFrameTextureReader _userModelReader = null!;
+    private RoomManageDrawable _roomManageUI = null!;
 
     private Timer _periodicSaveTimer = null!;
 
@@ -42,6 +47,14 @@ public partial class MainScreen : FadingScreen
                         _userSpoutSprite = new SpoutSprite(_userModelSpoutReceiver),
                         Settings.UserModelSettings.Scale
                     )
+                },
+
+                // Room UI
+                _roomManageUI = new RoomManageDrawable()
+                {
+                    Anchor = Anchor.BottomLeft,
+                    Origin = Anchor.BottomLeft,
+                    Margin = new MarginPadding(12)
                 },
 
                 // Temporary buttons

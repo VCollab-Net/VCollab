@@ -11,6 +11,7 @@
     <ItemGroup>
       <ProjectReference Include="..\libjpeg-turbo-net\libjpeg-turbo-net\libjpeg-turbo-net.csproj" />
       <ProjectReference Include="..\osu-framework\osu.Framework\osu.Framework.csproj" />
+      <ProjectReference Include="..\VCollab.Signaling.Shared\VCollab.Signaling.Shared.csproj" />
       <ProjectReference Include="..\veldrid\src\Veldrid.MetalBindings\Veldrid.MetalBindings.csproj" />
       <ProjectReference Include="..\veldrid\src\Veldrid.OpenGLBindings\Veldrid.OpenGLBindings.csproj" />
       <ProjectReference Include="..\veldrid\src\Veldrid\Veldrid.csproj" />
@@ -22,6 +23,7 @@
 
     <ItemGroup>
       <PackageReference Include="SpoutDx.Net.Interop" Version="0.1.0" />
+      <PackageReference Include="TextCopy" Version="6.2.1" />
     </ItemGroup>
 
     <ItemGroup>

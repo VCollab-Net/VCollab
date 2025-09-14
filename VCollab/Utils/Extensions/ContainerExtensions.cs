@@ -24,4 +24,25 @@ public static class ContainerExtensions
 
         return container;
     }
+
+    public static TContainer WithGlowEffect<TContainer, TItem>(this TContainer container, Color4 color, float cornerRadius, float glowRadius = 8)
+        where TContainer : Container<TItem>
+        where TItem : Drawable
+    {
+        container.CornerRadius = cornerRadius;
+        container.Masking = true;
+
+        container.BorderThickness = 2;
+        container.BorderColour = color.Darken(.5f).Opacity(.8f);
+
+        container.EdgeEffect = new EdgeEffectParameters()
+        {
+            Type = EdgeEffectType.Glow,
+            Colour = color.Opacity(.8f),
+            Radius = glowRadius,
+            Hollow = true
+        };
+
+        return container;
+    }
 }
