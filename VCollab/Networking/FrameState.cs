@@ -34,7 +34,7 @@ public sealed class FrameState
         CheckFrameInvalidation(frameCount);
 
         var modelData = data[NetworkClient.ChunkHeaderSize..];
-        var position = chunkOffset * NetworkClient.ChunkSize;
+        var position = chunkOffset * (NetworkClient.ChunkSize - NetworkClient.ChunkHeaderSize);
 
         var destinationSpan = _dataBuffer.GetSpan(position + modelData.Length);
 
@@ -76,7 +76,7 @@ public sealed class FrameState
                 frameInformation.RowPitch
             );
 
-            _peerState.FrameCompleted(_frameCount, textureInfo, textureData, alphaData);
+            _peerState.FrameCompleted(_frameCount, frameInformation.UncompressedAlphaDataSize, textureInfo, textureData, alphaData);
         }
     }
 }

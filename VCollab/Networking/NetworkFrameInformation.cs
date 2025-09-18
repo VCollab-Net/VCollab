@@ -9,6 +9,7 @@ public partial record struct NetworkFrameInformation(
     int FrameCount,
     int TextureDataSize,
     int AlphaDataSize,
+    int UncompressedAlphaDataSize,
     ushort Width,
     ushort Height,
     PixelFormat PixelFormat,

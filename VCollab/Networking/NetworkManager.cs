@@ -79,10 +79,11 @@ public sealed class NetworkManager : IDisposable
         ReadOnlySpan<byte> textureData,
         ReadOnlySpan<byte> alphaData,
         TextureInfo textureInfo,
-        long frameCount
+        long frameCount,
+        int uncompressedAlphaDataSize
     )
     {
-        _networkClient?.SendModelData(textureData, alphaData, textureInfo, frameCount);
+        _networkClient?.SendModelData(textureData, alphaData, textureInfo, frameCount, uncompressedAlphaDataSize);
     }
 
     public void Dispose()

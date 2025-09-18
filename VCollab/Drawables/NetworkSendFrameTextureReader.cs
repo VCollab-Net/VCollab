@@ -61,7 +61,7 @@ public partial class NetworkSendFrameTextureReader : FrameTextureReader
         var compressedAlphaData = _alphaCompressedDataBuffer.WrittenSpan;
 
         // Send data over network
-        NetworkManager.SendModelData(jpegData, compressedAlphaData, textureInfo, frameCount);
+        NetworkManager.SendModelData(jpegData, compressedAlphaData, textureInfo, frameCount, alphaData.Length);
     }
 
     protected override void Dispose(bool disposing)

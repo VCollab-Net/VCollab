@@ -149,7 +149,7 @@ public class HostNetworkClient : NetworkClient
         _peerIdToChannelOffset[peer.Id] = peerChannelOffset;
 
         // Initialize state for the new peer
-        SendInformationMessage(peer, new StateInitializationMessage(peerChannelOffset, PeerStates
+        SendInformationMessage(peer, new StateInitializationMessage((byte) peerChannelOffset, PeerStates
             .OfType<PeerState>()
             .Select(state => new PeerInfo(state.ChannelOffset, state.Name))
             .ToArray()

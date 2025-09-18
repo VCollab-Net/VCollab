@@ -19,6 +19,8 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
     protected const byte InformationMessagesChannel = 0;
     protected const DeliveryMethod InformationMessagesDeliveryMethod = DeliveryMethod.ReliableOrdered;
 
+    protected const DeliveryMethod ModelDataDeliveryMethod = DeliveryMethod.ReliableOrdered;
+
     protected const int MaxPeerChannelOffset = 23;
     protected const int HostChannelOffset = 0;
 
@@ -41,7 +43,11 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
         NetManager = new NetManager(this)
         {
             NatPunchEnabled = true,
-            UnconnectedMessagesEnabled = true
+            DisconnectTimeout = int.MaxValue,
+            EnableStatistics = true,
+            AutoRecycle = true,
+            ChannelsCount = 64,
+            PacketPoolSize = 10_000
         };
 
         var networkThread = new Thread(NetworkLoop)
@@ -144,7 +150,7 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
         var infoChannel = (byte)((channelOffset * 10) + DataChannelsStart);
         var frameDataChannel = (byte)(infoChannel + 1 + _frameChannelOffset);
 
-        peer.Send(frameInformationData, infoChannel, DeliveryMethod.Unreliable);
+        peer.Send(frameInformationData, infoChannel, ModelDataDeliveryMethod);
 
         // Texture and alpha data is too big to be sent in one packet, chunk it into smaller messages
         var textureDataSize = textureData.Length;
@@ -175,16 +181,12 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
             }
             else
             {
-                var alphaDataToWrite = Math.Min(toSend, dataSize - position);
-
-                alphaData[(position - textureDataSize)..(position - textureDataSize + alphaDataToWrite)].CopyTo(buffer[ChunkHeaderSize..]);
+                alphaData[(position - textureDataSize)..(position - textureDataSize + toSend)].CopyTo(buffer[ChunkHeaderSize..]);
             }
 
-            var writtenDataSize = toSend + ChunkHeaderSize;
+            peer.Send(buffer[..(ChunkHeaderSize + toSend)], frameDataChannel, ModelDataDeliveryMethod);
 
-            peer.Send(buffer[..writtenDataSize], frameDataChannel, DeliveryMethod.Unreliable);
-
-            position += writtenDataSize;
+            position += toSend;
             chunkOffset++;
         }
     }
@@ -204,7 +206,7 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
 
         foreach (var peer in peers)
         {
-            peer.Send(frameInformationData, infoChannel, DeliveryMethod.Unreliable);
+            peer.Send(frameInformationData, infoChannel, ModelDataDeliveryMethod);
         }
 
         // Texture and alpha data is too big to be sent in one packet, chunk it into smaller messages
@@ -236,19 +238,15 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
             }
             else
             {
-                var alphaDataToWrite = Math.Min(toSend, dataSize - position);
-
-                alphaData[(position - textureDataSize)..(position - textureDataSize + alphaDataToWrite)].CopyTo(buffer[ChunkHeaderSize..]);
+                alphaData[(position - textureDataSize)..(position - textureDataSize + toSend)].CopyTo(buffer[ChunkHeaderSize..]);
             }
-
-            var writtenDataSize = toSend + ChunkHeaderSize;
 
             foreach (var peer in peers)
             {
-                peer.Send(buffer[..writtenDataSize], frameDataChannel, DeliveryMethod.Unreliable);
+                peer.Send(buffer[..(ChunkHeaderSize + toSend)], frameDataChannel, ModelDataDeliveryMethod);
             }
 
-            position += writtenDataSize;
+            position += toSend;
             chunkOffset++;
         }
     }
@@ -257,7 +255,8 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
         ReadOnlySpan<byte> textureData,
         ReadOnlySpan<byte> alphaData,
         TextureInfo textureInfo,
-        long frameCount
+        long frameCount,
+        int uncompressedAlphaDataSize
     )
     {
         // Frame channel offset cycles between 0 and 9 since offset 0 is used for frame info data
@@ -269,6 +268,7 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
             (int) frameCount,
             textureData.Length,
             alphaData.Length,
+            uncompressedAlphaDataSize,
             (ushort) textureInfo.Width,
             (ushort) textureInfo.Height,
             textureInfo.PixelFormat,
@@ -307,16 +307,16 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
         // Frame information channel
         if (frameOffset is 0)
         {
-            var frameInformation = MemoryPackSerializer.Deserialize<NetworkFrameInformation?>(data);
+            var frameInformation = MemoryPackSerializer.Deserialize<NetworkFrameInformation>(data);
 
-            if (!frameInformation.HasValue)
+            if (frameInformation.TotalDataSize <= 0)
             {
                 Logger.Log($"Received invalid/corrupt frame information on channel {channelNumber}", LoggingTarget.Network, LogLevel.Error);
 
                 return;
             }
 
-            peerState.UpdateFrameInformation(frameInformation.Value);
+            peerState.UpdateFrameInformation(frameInformation);
         }
         // Actual frame data
         else

@@ -12,6 +12,7 @@ public sealed class FullFrameData : IDisposable
     public ReadOnlyMemory<byte> AlphaDataMemory => _backingBuffer.WrittenMemory[_textureSize..];
 
     public int FrameCount { get; }
+    public int UncompressedAlphaDataSize { get; }
     public TextureInfo TextureInfo { get; }
 
     private readonly PeerState _peerState;
@@ -23,6 +24,7 @@ public sealed class FullFrameData : IDisposable
         ArrayBufferWriter<byte> backingBuffer,
         int textureSize,
         int frameCount,
+        int uncompressedAlphaDataSize,
         TextureInfo textureInfo
     )
     {
@@ -31,6 +33,7 @@ public sealed class FullFrameData : IDisposable
         _textureSize = textureSize;
 
         FrameCount = frameCount;
+        UncompressedAlphaDataSize = uncompressedAlphaDataSize;
         TextureInfo = textureInfo;
     }
 

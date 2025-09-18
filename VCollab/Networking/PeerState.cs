@@ -53,6 +53,7 @@ public sealed class PeerState : IDisposable
 
     public void FrameCompleted(
         int frameCount,
+        int uncompressedAlphaDataSize,
         TextureInfo textureInfo,
         ReadOnlySpan<byte> textureData,
         ReadOnlySpan<byte> alphaData
@@ -80,6 +81,7 @@ public sealed class PeerState : IDisposable
             bufferWriter,
             textureData.Length,
             frameCount,
+            uncompressedAlphaDataSize,
             textureInfo
         ));
     }

@@ -4,6 +4,6 @@ namespace VCollab.Networking.Information;
 
 [MemoryPackable]
 public partial record StateInitializationMessage(
-    int ChannelOffset,
+    byte ChannelOffset,
     PeerInfo[] PeerInfos
 ) : IInformationMessage;

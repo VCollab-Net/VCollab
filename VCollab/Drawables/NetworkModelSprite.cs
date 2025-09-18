@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Collections.Concurrent;
+using K4os.Compression.LZ4;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -15,8 +17,6 @@ public partial class NetworkModelSprite : Drawable, INetworkFrameConsumer
 
     protected override void Update()
     {
-        base.Update();
-
         // Check for available frames and save them to files for debug
         if (UserName is not null && FramesBag is not null)
         {
@@ -38,14 +38,21 @@ public partial class NetworkModelSprite : Drawable, INetworkFrameConsumer
 
         var baseFilePath = Path.Combine("tmp", $"{UserName}-frame-{frameCount:D5}");
 
+        // Decompress alpha data
+        var uncompressedAlphaData = ArrayPool<byte>.Shared.Rent(frameData.UncompressedAlphaDataSize);
+        var uncompressedAlphaDataSize = LZ4Codec.Decode(frameData.AlphaDataSpan, uncompressedAlphaData);
+
         // Save alpha later as viewable image
-        var image = Image.LoadPixelData<L8>(frameData.AlphaDataSpan, (int)textureInfo.Width / 8, (int)textureInfo.Height);
+        var image = Image.LoadPixelData<L8>(uncompressedAlphaData.AsSpan()[..uncompressedAlphaDataSize], (int)textureInfo.Width / 8, (int)textureInfo.Height);
         image.Mutate(i => i.Resize((int)textureInfo.Width, (int)textureInfo.Height, new NearestNeighborResampler()));
 
         var writeTextureTask = File.WriteAllBytesAsync($"{baseFilePath}.jpg", textureData);
         var alphaWriteTask = image.SaveAsPngAsync($"{baseFilePath}.png");
 
         await Task.WhenAll(writeTextureTask, alphaWriteTask);
+
+        ArrayPool<byte>.Shared.Return(uncompressedAlphaData);
+        frameData.Dispose();
     }
 
     protected override void Dispose(bool disposing)

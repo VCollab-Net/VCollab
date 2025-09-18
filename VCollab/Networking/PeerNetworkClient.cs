@@ -10,7 +10,7 @@ namespace VCollab.Networking;
 public class PeerNetworkClient : NetworkClient
 {
     private NetPeer? _hostPeer = null;
-    private int _channelOffset = -1;
+    private byte? _channelOffset = null;
 
     public PeerNetworkClient(NetworkManager networkManager) : base(networkManager)
     {
@@ -42,7 +42,7 @@ public class PeerNetworkClient : NetworkClient
     {
         // TODO Handle host disconnect, this should leave room and allow join/creating a new one
         _hostPeer = null;
-        _channelOffset = -1;
+        _channelOffset = null;
 
         Logger.Log($"OnPeerDisconnected ({disconnectInfo.Reason})", LoggingTarget.Network);
     }
@@ -149,7 +149,7 @@ public class PeerNetworkClient : NetworkClient
         int frameCount
     )
     {
-        if (_hostPeer is not null)
+        if (_hostPeer is not null && _channelOffset is { } channelOffset)
         {
             SendModelDataToPeer(
                 textureData,
@@ -157,7 +157,7 @@ public class PeerNetworkClient : NetworkClient
                 frameInformationData,
                 frameCount,
                 _hostPeer,
-                HostChannelOffset
+                channelOffset
             );
         }
     }
