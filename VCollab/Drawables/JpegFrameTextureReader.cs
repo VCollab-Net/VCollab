@@ -32,7 +32,7 @@ public partial class JpegFrameTextureReader : FrameTextureReader
         Task.Run(WriteAlphaDataToImage);
     }
 
-    private async Task WriteAlphaDataToImage()
+    private void WriteAlphaDataToImage()
     {
         var alphaData = _lastAlphaData.Span;
         var frameCount = FramesCount;

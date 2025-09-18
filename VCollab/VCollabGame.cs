@@ -2,6 +2,7 @@ using System.Reflection;
 
 using osu.Framework.IO.Stores;
 using osu.Framework.Screens;
+using VCollab.Networking;
 using VCollab.Screens;
 
 namespace VCollab;
@@ -30,6 +31,11 @@ public partial class VCollabGame : Game
         var settings = VCollabSettings.Load(Host.Storage);
 
         dependencies.Cache(settings);
+
+        // Network manager
+        var networkManager = new NetworkManager(Host);
+
+        dependencies.Cache(networkManager);
 
         return dependencies;
     }

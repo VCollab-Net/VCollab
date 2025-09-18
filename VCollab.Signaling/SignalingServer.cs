@@ -31,7 +31,7 @@ public class SignalingServer : BackgroundService, INatPunchListener, INetEventLi
         _puncher.Start(SignalingUtils.ServerPort);
         _puncher.NatPunchModule.Init(this);
 
-        _logger.LogInformation("Signaling server started, waiting for peers...");
+        _logger.LogInformation("Signaling server started, waiting for peers on port {Port}...", SignalingUtils.ServerPort);
 
         // Events poll and host expiration loop
         while (!stoppingToken.IsCancellationRequested)
@@ -68,6 +68,8 @@ public class SignalingServer : BackgroundService, INatPunchListener, INetEventLi
         // Invalid data format
         if (requestData is null)
         {
+            _logger.LogWarning("Received invalid data: {Token}", token);
+
             return;
         }
 
@@ -76,13 +78,15 @@ public class SignalingServer : BackgroundService, INatPunchListener, INetEventLi
             // If no room with this secret exist, create a new one, otherwise refresh time
             if (_hosts.TryGetValue(requestData.RoomSecret, out var hostPeer))
             {
-                _logger.LogInformation("Host refresh: ");
-
                 hostPeer.Refresh();
+
+                _logger.LogInformation("Host refresh: {HostName}", requestData.Name);
             }
             else
             {
                 _hosts[requestData.RoomSecret] = new HostPeer(localEndPoint, remoteEndPoint, requestData);
+
+                _logger.LogInformation("Host new room: {HostName}", requestData.Name);
             }
         }
         else
@@ -90,6 +94,8 @@ public class SignalingServer : BackgroundService, INatPunchListener, INetEventLi
             // If no room exist for this secret it may have expired, there is nothing to do
             if (!_hosts.TryGetValue(requestData.RoomSecret, out var hostPeer))
             {
+                _logger.LogInformation("Peer tried to connect to a room that does not exist: {Name}", requestData.Name);
+
                 return;
             }
 
@@ -122,12 +128,12 @@ public class SignalingServer : BackgroundService, INatPunchListener, INetEventLi
 
     public void OnPeerConnected(NetPeer peer)
     {
-        _logger.LogInformation("New peer connected: {PeerId} (MTU: {Mtu}", peer.Id, peer.Mtu);
+        // The signaling server does not accept direct connection
     }
 
     public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
-        _logger.LogInformation("Peer disconnected: {PeerId} ({Reason})", peer.Id, disconnectInfo.Reason);
+        // Nothing to do
     }
 
     public void OnNetworkError(IPEndPoint endPoint, SocketError socketError)
@@ -152,6 +158,7 @@ public class SignalingServer : BackgroundService, INatPunchListener, INetEventLi
 
     public void OnConnectionRequest(ConnectionRequest request)
     {
-        request.AcceptIfKey(SignalingUtils.ConnectionKey);
+        // Signaling server should not receive direct connection requests
+        request.RejectForce();
     }
 }

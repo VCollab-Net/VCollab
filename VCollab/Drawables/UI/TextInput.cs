@@ -7,7 +7,7 @@ namespace VCollab.Drawables.UI;
 
 public partial class TextInput : TextBox
 {
-    public const float FontSize = 22f;
+    public new const float FontSize = 22f;
 
     private readonly Box _background;
 

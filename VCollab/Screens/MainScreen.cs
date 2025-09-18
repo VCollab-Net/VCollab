@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using osu.Framework.Graphics.Primitives;
 using osu.Framework.Platform;
 using osu.Framework.Screens;
@@ -9,20 +10,20 @@ namespace VCollab.Screens;
 
 public partial class MainScreen : FadingScreen
 {
-    [Cached]
-    protected readonly NetworkManager NetworkManager = new();
-
     [Resolved]
     private VCollabSettings Settings { get; set; } = null!;
+    [Resolved]
+    private NetworkManager NetworkManager { get; set; } = null!;
 
     private SpoutSenderContainer _modelsCanvas = null!;
     private SpoutTextureReceiver _userModelSpoutReceiver = null!;
     private DraggableResizableSprite _userResizableSprite = null!;
     private SpoutSprite _userSpoutSprite = null!;
-    private JpegFrameTextureReader _userModelReader = null!;
+    private FrameTextureReader _userModelReader = null!;
     private RoomManageDrawable _roomManageUI = null!;
 
     private Timer _periodicSaveTimer = null!;
+    private bool _savingSettings = false;
 
     [BackgroundDependencyLoader]
     private void Load(GameHost host)
@@ -36,17 +37,20 @@ public partial class MainScreen : FadingScreen
                 _userModelSpoutReceiver = new SpoutTextureReceiver(),
 
                 // User model reader, this will capture the source Spout2 texture to send it over network
-                _userModelReader = new JpegFrameTextureReader(_userModelSpoutReceiver),
+                _userModelReader = new NetworkSendFrameTextureReader(_userModelSpoutReceiver),
 
                 // Models canvas is a Spout sender
                 _modelsCanvas = new SpoutSenderContainer("VCollab")
                 {
                     RelativeSizeAxes = Axes.Both,
 
-                    Child = _userResizableSprite = new DraggableResizableSprite(
-                        _userSpoutSprite = new SpoutSprite(_userModelSpoutReceiver),
-                        Settings.UserModelSettings.Scale
-                    )
+                    Children =
+                    [
+                        _userResizableSprite = new DraggableResizableSprite(
+                            _userSpoutSprite = new SpoutSprite(_userModelSpoutReceiver),
+                            Settings.UserModelSettings.Scale
+                        )
+                    ]
                 },
 
                 // Room UI
@@ -86,6 +90,16 @@ public partial class MainScreen : FadingScreen
 
         // Settings save task
         _periodicSaveTimer = new Timer(OnPeriodicSave, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+
+        NetworkManager.NewNetworkFrameConsumer += OnNewNetworkFrameConsumer;
+    }
+
+    private void OnNewNetworkFrameConsumer(INetworkFrameConsumer networkFrameConsumer)
+    {
+        if (networkFrameConsumer is Drawable drawableFrameConsumer)
+        {
+            Scheduler.Add(() => _modelsCanvas.Add(drawableFrameConsumer));
+        }
     }
 
     public override void OnResuming(ScreenTransitionEvent e)
@@ -97,12 +111,20 @@ public partial class MainScreen : FadingScreen
         UpdateUserModelTextureReader();
     }
 
-    private void OnPeriodicSave(object? state)
+    private void OnPeriodicSave(object? _)
     {
+        // Only save settings if a save is not already ongoing
+        if (Interlocked.CompareExchange(ref _savingSettings, true, false))
+        {
+            return;
+        }
+
         Settings.UserModelSettings.Scale = _userResizableSprite.ScaleFactor;
         Settings.UserModelSettings.PositionOffset = _userResizableSprite.Position;
 
         Settings.Save();
+
+        _savingSettings = false;
     }
 
     private void UpdateUserModel()
@@ -140,11 +162,14 @@ public partial class MainScreen : FadingScreen
         }
     }
 
+    [SuppressMessage("ReSharper", "ConditionalAccessQualifierIsNonNullableAccordingToAPIContract")]
     protected override void Dispose(bool isDisposing)
     {
         if (isDisposing)
         {
-            _periodicSaveTimer.Dispose();
+            _periodicSaveTimer?.Dispose();
+
+            NetworkManager.NewNetworkFrameConsumer -= OnNewNetworkFrameConsumer;
         }
 
         base.Dispose(isDisposing);

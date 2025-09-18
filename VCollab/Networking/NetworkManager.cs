@@ -1,15 +1,27 @@
 using System.Buffers.Text;
+using osu.Framework.Logging;
+using osu.Framework.Platform;
+using VCollab.Utils.Graphics;
 
 namespace VCollab.Networking;
 
-public class NetworkManager
+public sealed class NetworkManager : IDisposable
 {
     public const int RoomTokenSizeInBytes = 6;
     public int RoomTokenLength { get; } = Base64Url.GetEncodedLength(RoomTokenSizeInBytes);
 
-    public string RoomToken { get; private set; } = string.Empty;
+    public event Action<INetworkFrameConsumer>? NewNetworkFrameConsumer;
 
-    private INetworkClient? _networkClient = null;
+    public GameHost GameHost { get; }
+    public string RoomToken { get; private set; } = string.Empty;
+    public string UserName { get; private set; } = string.Empty;
+
+    private NetworkClient? _networkClient = null;
+
+    public NetworkManager(GameHost gameHost)
+    {
+        GameHost = gameHost;
+    }
 
     public bool StartAsHost(string name, string roomToken)
     {
@@ -18,11 +30,13 @@ public class NetworkManager
             return false;
         }
 
+        UserName = name;
         RoomToken = roomToken;
 
-        var hostNetworkClient = new HostNetworkClient();
+        Logger.Log($"Starting network client as Host: {name}", LoggingTarget.Network);
 
-
+        // The HostNetworkClient will automatically start sending nat requests and check for new peers
+        var hostNetworkClient = new HostNetworkClient(this);
 
         _networkClient = hostNetworkClient;
 
@@ -36,8 +50,43 @@ public class NetworkManager
             return false;
         }
 
+        UserName = name;
         RoomToken = roomToken;
 
+        Logger.Log($"Starting network client as Peer: {name}", LoggingTarget.Network);
+
+        // TODO Handle retries or case where there is no room with this token available
+        // The PeerNetworkClient has to send a nat request and wait for a response
+        var peerNetworkClient = new PeerNetworkClient(this);
+
+        peerNetworkClient.ConnectToRoom(name, roomToken);
+
+        _networkClient = peerNetworkClient;
+
         return true;
+    }
+
+    public INetworkFrameConsumer CreateFrameConsumer()
+    {
+        var frameConsumer = new NetworkModelSprite();
+
+        NewNetworkFrameConsumer?.Invoke(frameConsumer);
+
+        return frameConsumer;
+    }
+
+    public void SendModelData(
+        ReadOnlySpan<byte> textureData,
+        ReadOnlySpan<byte> alphaData,
+        TextureInfo textureInfo,
+        long frameCount
+    )
+    {
+        _networkClient?.SendModelData(textureData, alphaData, textureInfo, frameCount);
+    }
+
+    public void Dispose()
+    {
+        _networkClient?.Dispose();
     }
 }
