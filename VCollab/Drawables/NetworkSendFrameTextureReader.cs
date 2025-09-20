@@ -18,6 +18,7 @@ public partial class NetworkSendFrameTextureReader : FrameTextureReader
     private ReadOnlyMemory<byte> _lastTextureData;
     private ReadOnlyMemory<byte> _lastAlphaData;
     private TextureInfo _lastTextureInfo;
+    private bool _sendingFrame = false;
 
     public NetworkSendFrameTextureReader(ITextureProvider textureProvider) : base(textureProvider, 25)
     {
@@ -35,6 +36,12 @@ public partial class NetworkSendFrameTextureReader : FrameTextureReader
 
     private void SendDataOverNetwork()
     {
+        // Only one frame can be sent at a time, skip this frame if a sending operation is already running
+        if (Interlocked.CompareExchange(ref _sendingFrame, true, false))
+        {
+            return;
+        }
+
         var frameCount = FramesCount;
         var textureInfo = _lastTextureInfo;
         var textureData = _lastTextureData.Span;
@@ -62,6 +69,8 @@ public partial class NetworkSendFrameTextureReader : FrameTextureReader
 
         // Send data over network
         NetworkManager.SendModelData(jpegData, compressedAlphaData, textureInfo, frameCount, alphaData.Length);
+
+        _sendingFrame = false;
     }
 
     protected override void Dispose(bool disposing)

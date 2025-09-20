@@ -114,6 +114,7 @@ public class PeerNetworkClient : NetworkClient
 
             case DisconnectedPeerMessage disconnectedPeerMessage:
 
+                PeerStates[disconnectedPeerMessage.ChannelOffset]?.Dispose();
                 PeerStates[disconnectedPeerMessage.ChannelOffset] = null;
 
                 break;

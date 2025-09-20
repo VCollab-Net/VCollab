@@ -32,15 +32,15 @@ public partial class JpegFrameTextureReader : FrameTextureReader
         Task.Run(WriteAlphaDataToImage);
     }
 
-    private void WriteAlphaDataToImage()
+    private async Task WriteAlphaDataToImage()
     {
         var alphaData = _lastAlphaData.Span;
         var frameCount = FramesCount;
 
-        // var image = Image.LoadPixelData<L8>(alphaData, (int)_lastTextureInfo.Width / 8, (int)_lastTextureInfo.Height);
-        // image.Mutate(i => i.Resize((int)_lastTextureInfo.Width, (int)_lastTextureInfo.Height, new NearestNeighborResampler()));
-        //
-        // await image.SaveAsPngAsync(Path.Combine("tmp", $"frame-{frameCount:D4}-alpha.png"));
+        var image = Image.LoadPixelData<L8>(alphaData, (int)_lastTextureInfo.Width / 8, (int)_lastTextureInfo.Height);
+        image.Mutate(i => i.Resize((int)_lastTextureInfo.Width, (int)_lastTextureInfo.Height, new NearestNeighborResampler()));
+
+        await image.SaveAsPngAsync(Path.Combine("tmp", $"frame-{frameCount:D4}-alpha.png"));
     }
 
     private void WriteTextureDataToJpeg()
@@ -60,7 +60,7 @@ public partial class JpegFrameTextureReader : FrameTextureReader
             TJFlags.NONE
         );
 
-        // File.WriteAllBytes(Path.Combine("tmp", $"frame-{frameCount:D4}-texture.jpg"), jpegData);
+        File.WriteAllBytes(Path.Combine("tmp", $"frame-{frameCount:D4}-texture.jpg"), jpegData);
     }
 
     protected override void Dispose(bool disposing)
