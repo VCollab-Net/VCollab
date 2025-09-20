@@ -51,6 +51,7 @@ public partial class VCollabGame : Game
         }
 
         // Set sensible default values for framerate
+        Host.Renderer.VerticalSync = false;
         Host.MaximumUpdateHz = 120;
         Host.UpdateThread.InactiveHz = 120;
         Host.MaximumDrawHz = 60;
