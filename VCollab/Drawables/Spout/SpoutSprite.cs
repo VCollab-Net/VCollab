@@ -30,13 +30,12 @@ public partial class SpoutSprite : Sprite
         TextureRectangle = new RectangleF(-rectangle.X * widthFactor, -rectangle.Y * heightFactor, widthFactor, heightFactor);
 
         // Required to properly update parent size
-        if (Parent is DraggableResizableSprite)
+        if (Parent is DraggableResizableSprite resizableSprite)
         {
             var width = (float) Math.Round(textureSize.X * rectangle.Width, MidpointRounding.AwayFromZero);
             var height = (float) Math.Round(textureSize.Y * rectangle.Height, MidpointRounding.AwayFromZero);
 
-            Parent.Size = new Vector2(width, height);
-            Parent.Invalidate(Invalidation.DrawSize, InvalidationSource.Child);
+            resizableSprite.UpdateSizeFromChild(new Vector2(width, height));
         }
     }
 

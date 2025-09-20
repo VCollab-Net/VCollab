@@ -1,6 +1,5 @@
 using System.Buffers;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using K4os.Compression.LZ4;
 using osu.Framework.Graphics.Textures;
@@ -9,19 +8,15 @@ using osu.Framework.Graphics.Veldrid.Textures;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Threading;
-using osu.Framework.Timing;
-using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Processing.Processors.Transforms;
 using TurboJpegWrapper;
 using VCollab.Networking;
 using VCollab.Utils;
 using VCollab.Utils.Graphics;
 using VCollab.Utils.Graphics.Compute;
 using Veldrid;
-using Image = SixLabors.ImageSharp.Image;
 using Texture = Veldrid.Texture;
+using OsuTexture = osu.Framework.Graphics.Textures.Texture;
 
 namespace VCollab.Drawables;
 
@@ -43,6 +38,16 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
 
     private FullFrameData? _frameToDisplay = null;
     private long _lastDisplayedFrameCount = 0;
+
+    private OsuTexture? _targetTexture = null;
+    private bool _needsTextureUpdate = false;
+
+    public NetworkModelSprite()
+    {
+        // Make sure this sprite always fill its container and keep aspect ratio
+        RelativeSizeAxes = Axes.Both;
+        FillMode = FillMode.Fill;
+    }
 
     [BackgroundDependencyLoader]
     private void Load(GameHost host)
@@ -67,6 +72,23 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
 
     protected override void Update()
     {
+        if (_needsTextureUpdate)
+        {
+            _needsTextureUpdate = false;
+
+            Texture?.Dispose();
+            Texture = _targetTexture;
+
+            // Required to properly update parent size
+            if (Parent is DraggableResizableSprite resizableSprite)
+            {
+                var width = (float) Texture!.Width;
+                var height = (float) Texture!.Height;
+
+                resizableSprite.UpdateSizeFromChild(new Vector2(width, height));
+            }
+        }
+
         if (!_isInitialized || UserName is null || FramesBag is null)
         {
             return;
@@ -92,9 +114,10 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
         }
 
         // Always select most recent frame, Update() has higher frequency than Draw() so it works well enough
+        FullFrameData? frameToDisplay = null;
         if (_availableFrames.Count > 0)
         {
-            var frameToDisplay = _availableFrames.MinBy(frame => frame.FrameCount)!;
+            frameToDisplay = _availableFrames.MinBy(frame => frame.FrameCount)!;
 
             var previousFrame = Interlocked.Exchange(ref _frameToDisplay, frameToDisplay);
             previousFrame?.Dispose();
@@ -106,7 +129,7 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
         // Reinject frames that we did not use if they are still valid
         foreach (var availableFrame in _availableFrames)
         {
-            if (availableFrame != _frameToDisplay)
+            if (availableFrame != frameToDisplay)
             {
                 FramesBag?.Add(availableFrame);
             }
@@ -117,7 +140,7 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
 
     private void DrawFrame()
     {
-        var frameToDisplay = _frameToDisplay;
+        var frameToDisplay = Interlocked.Exchange(ref _frameToDisplay, null);
 
         if (frameToDisplay is null)
         {
@@ -127,12 +150,12 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
         var textureInfo = frameToDisplay.TextureInfo;
 
         // First frame received, initial texture is always null
-        if (Texture is null)
+        if (_targetTexture is null)
         {
             EnsureTextureFormat(textureInfo, PixelFormat.R8G8B8A8UNorm);
         }
 
-        if (Texture?.NativeTexture is not VeldridNativeTexture veldridTexture)
+        if (_targetTexture?.NativeTexture is not VeldridNativeTexture veldridTexture)
         {
             return;
         }
@@ -189,19 +212,20 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
 
     private void EnsureTextureFormat(TextureInfo textureInfo, PixelFormat textureFormat)
     {
-        if (Texture is null
-            || Texture.Width != textureInfo.Width
-            || Texture.Height != textureInfo.Height
+        if (_targetTexture is null
+            || _targetTexture.Width != textureInfo.Width
+            || _targetTexture.Height != textureInfo.Height
             || textureFormat != textureInfo.PixelFormat)
         {
-            Texture?.Dispose();
-            Texture = _renderer.CreateTexture(new VeldridNativeTexture(
+            _targetTexture = _renderer.CreateTexture(new VeldridNativeTexture(
                 _renderer,
                 textureInfo.Width,
                 textureInfo.Height,
                 textureInfo.PixelFormat,
                 TextureUsage.Sampled | TextureUsage.Storage
             ), WrapMode.ClampToBorder, WrapMode.ClampToBorder);
+
+            _needsTextureUpdate = true;
         }
     }
 

@@ -96,9 +96,9 @@ public partial class MainScreen : FadingScreen
 
     private void OnNewNetworkFrameConsumer(INetworkFrameConsumer networkFrameConsumer)
     {
-        if (networkFrameConsumer is Drawable drawableFrameConsumer)
+        if (networkFrameConsumer is Sprite drawableFrameConsumer)
         {
-            Scheduler.Add(() => _modelsCanvas.Add(drawableFrameConsumer));
+            Scheduler.Add(() => _modelsCanvas.Add(new DraggableResizableSprite(drawableFrameConsumer)));
         }
     }
 

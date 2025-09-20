@@ -17,7 +17,7 @@ public partial class DraggableResizableSprite : CompositeDrawable
     public DraggableResizableSprite(Sprite sprite, float initialScale = 1f)
     {
         // Initial size, should not be used as size should always be set by the child sprite
-        _sizeInPixels = new Vector2(400, 400);
+        _sizeInPixels = new Vector2(100, 100);
         _scale = initialScale;
 
         UpdateSize();
@@ -40,17 +40,11 @@ public partial class DraggableResizableSprite : CompositeDrawable
         this.ResizeTo(newSize, 400, Easing.OutQuint);
     }
 
-    protected override bool OnInvalidate(Invalidation invalidation, InvalidationSource source)
+    public void UpdateSizeFromChild(Vector2 newSize)
     {
-        // This is an invalidation from the sprite we're drawing, make sure we adapt to the new size
-        if (invalidation is Invalidation.DrawSize && source is InvalidationSource.Child)
-        {
-            _sizeInPixels = Size;
+        _sizeInPixels = newSize;
 
-            UpdateSize();
-        }
-
-        return base.OnInvalidate(invalidation, source);
+        UpdateSize();
     }
 
     protected override bool OnMouseDown(MouseDownEvent e)

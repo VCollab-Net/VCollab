@@ -52,7 +52,8 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
 
         var networkThread = new Thread(NetworkLoop)
         {
-            IsBackground = true
+            IsBackground = true,
+            Name = "VCollabNetworkThread"
         };
         networkThread.Start();
     }
