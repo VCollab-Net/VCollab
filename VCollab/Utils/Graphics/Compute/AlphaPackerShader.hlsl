@@ -14,7 +14,7 @@ Texture2D<float4> InputTexture;
 // Output buffer: one entry per group of 32 pixels
 RWStructuredBuffer<uint> OutputBuffer;
 
-// Texture size (passed from C#)
+// Texture size
 texture_size_t TextureSize;
 
 [numthreads(64, 1, 1)] // One thread processes 32 pixels
