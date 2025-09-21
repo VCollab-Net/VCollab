@@ -43,7 +43,7 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
         NetManager = new NetManager(this)
         {
             NatPunchEnabled = true,
-            DisconnectTimeout = int.MaxValue,
+            // DisconnectTimeout = int.MaxValue,
             EnableStatistics = true,
             AutoRecycle = true,
             ChannelsCount = 64,

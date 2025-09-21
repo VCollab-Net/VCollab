@@ -55,7 +55,7 @@ public partial class NetworkSendFrameTextureReader : FrameTextureReader
             (int) textureInfo.Height,
             JpegUtils.VeldridToJpegPixelFormat(textureInfo.PixelFormat),
             TJSubsamplingOptions.TJSAMP_420,
-            90,
+            75,
             TJFlags.NONE
         );
 

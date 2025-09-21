@@ -8,13 +8,17 @@ using osu.Framework.Graphics.Veldrid.Textures;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Threading;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Processing.Processors.Transforms;
 using TurboJpegWrapper;
 using VCollab.Networking;
 using VCollab.Utils;
 using VCollab.Utils.Graphics;
 using VCollab.Utils.Graphics.Compute;
 using Veldrid;
+using Image = SixLabors.ImageSharp.Image;
 using Texture = Veldrid.Texture;
 using OsuTexture = osu.Framework.Graphics.Textures.Texture;
 
@@ -227,6 +231,31 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
 
             _needsTextureUpdate = true;
         }
+    }
+
+    private async Task SaveFrameData(FullFrameData frameData)
+    {
+        var frameCount = frameData.FrameCount;
+        var textureInfo = frameData.TextureInfo;
+        var textureData = frameData.TextureDataMemory;
+
+        var baseFilePath = Path.Combine("tmp", $"{UserName}-frame-{frameCount:D5}");
+
+        // Decompress alpha data
+        var uncompressedAlphaData = ArrayPool<byte>.Shared.Rent(frameData.UncompressedAlphaDataSize);
+        var uncompressedAlphaDataSize = LZ4Codec.Decode(frameData.AlphaDataSpan, uncompressedAlphaData);
+
+        // Save alpha later as viewable image
+        using var image = Image.LoadPixelData<L8>(uncompressedAlphaData.AsSpan()[..uncompressedAlphaDataSize], (int)textureInfo.Width / 8, (int)textureInfo.Height);
+        image.Mutate(i => i.Resize((int)textureInfo.Width, (int)textureInfo.Height, new NearestNeighborResampler()));
+
+        var writeTextureTask = File.WriteAllBytesAsync($"{baseFilePath}.jpg", textureData);
+        var alphaWriteTask = image.SaveAsPngAsync($"{baseFilePath}.png");
+
+        await Task.WhenAll(writeTextureTask, alphaWriteTask);
+
+        ArrayPool<byte>.Shared.Return(uncompressedAlphaData);
+        frameData.Dispose();
     }
 
     protected override void Dispose(bool disposing)

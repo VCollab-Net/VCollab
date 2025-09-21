@@ -51,8 +51,8 @@ public sealed class AlphaMaskUnpacker : IDisposable
         ));
 
         _layout = _resourceFactory.CreateResourceLayout(new ResourceLayoutDescription(
-            new ResourceLayoutElementDescription("InputTexture", ResourceKind.TextureReadWrite, ShaderStages.Compute),
-            new ResourceLayoutElementDescription("OutputBuffer", ResourceKind.StructuredBufferReadOnly, ShaderStages.Compute),
+            new ResourceLayoutElementDescription("OutputTexture", ResourceKind.TextureReadWrite, ShaderStages.Compute),
+            new ResourceLayoutElementDescription("InputBuffer", ResourceKind.StructuredBufferReadOnly, ShaderStages.Compute),
             new ResourceLayoutElementDescription("TextureSize", ResourceKind.UniformBuffer, ShaderStages.Compute)
         ));
 

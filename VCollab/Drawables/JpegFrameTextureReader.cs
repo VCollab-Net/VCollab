@@ -20,6 +20,11 @@ public partial class JpegFrameTextureReader : FrameTextureReader
     public JpegFrameTextureReader(ITextureProvider textureProvider) : base(textureProvider, 25)
     {
         _jpegCompressor = new TJCompressor();
+
+        if (!Directory.Exists("tmp"))
+        {
+            Directory.CreateDirectory("tmp");
+        }
     }
 
     protected override void OnFrameAvailable(ReadOnlyMemory<byte> textureData, ReadOnlyMemory<byte> alphaData, TextureInfo textureInfo)
@@ -37,7 +42,7 @@ public partial class JpegFrameTextureReader : FrameTextureReader
         var alphaData = _lastAlphaData.Span;
         var frameCount = FramesCount;
 
-        var image = Image.LoadPixelData<L8>(alphaData, (int)_lastTextureInfo.Width / 8, (int)_lastTextureInfo.Height);
+        using var image = Image.LoadPixelData<L8>(alphaData, (int)_lastTextureInfo.Width / 8, (int)_lastTextureInfo.Height);
         image.Mutate(i => i.Resize((int)_lastTextureInfo.Width, (int)_lastTextureInfo.Height, new NearestNeighborResampler()));
 
         await image.SaveAsPngAsync(Path.Combine("tmp", $"frame-{frameCount:D4}-alpha.png"));
