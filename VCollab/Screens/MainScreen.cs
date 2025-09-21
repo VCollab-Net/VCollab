@@ -105,7 +105,11 @@ public partial class MainScreen : FadingScreen
     {
         if (networkFrameConsumer is Sprite drawableFrameConsumer)
         {
-            Scheduler.Add(() => _modelsCanvas.Add(new DraggableResizableSprite(drawableFrameConsumer)));
+            Scheduler.Add(() => _modelsCanvas.Add(new DraggableResizableSprite(drawableFrameConsumer)
+            {
+                X = DrawWidth  * .3f,
+                Y = DrawHeight * .3f
+            }));
         }
     }
 

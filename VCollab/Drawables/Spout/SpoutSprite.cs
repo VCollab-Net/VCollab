@@ -17,7 +17,6 @@ public partial class SpoutSprite : Sprite
 
         // Make sure this sprite always fill its container and keep aspect ratio
         RelativeSizeAxes = Axes.Both;
-        FillMode = FillMode.Fill;
 
         _spoutTextureReceiver.TextureUpdated += OnTextureUpdated;
     }
