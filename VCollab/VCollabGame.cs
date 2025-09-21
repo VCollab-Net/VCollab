@@ -58,7 +58,10 @@ public partial class VCollabGame : Game
         Host.MaximumDrawHz = 60;
         Host.DrawThread.InactiveHz = 60;
 
-        _screenStack = new ScreenStack();
+        _screenStack = new ScreenStack()
+        {
+            Name = "MainScreenStack"
+        };
         _screenStack.Push(new MainScreen());
 
         AddRange([

@@ -48,7 +48,7 @@ void main(uint3 id : SV_DispatchThreadID)
         float4 pixelValue = InputTexture.Load(int3(pixelCoord, 0));
         float alpha = pixelValue.a;
 
-        if (alpha > 0)
+        if (alpha >= 0.5)
         {
             result |= 1 << i;
         }
