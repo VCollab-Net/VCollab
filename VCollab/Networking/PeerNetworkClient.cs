@@ -128,12 +128,6 @@ public class PeerNetworkClient : NetworkClient
         }
     }
 
-    public override void OnNetworkLatencyUpdate(NetPeer peer, int latency)
-    {
-        // TODO Update latency
-        Logger.Log($"Latency to host: {latency}", LoggingTarget.Network);
-    }
-
     public void ConnectToRoom(string name, string roomToken)
     {
         var requestData = new NatRequestData(false, name, roomToken);

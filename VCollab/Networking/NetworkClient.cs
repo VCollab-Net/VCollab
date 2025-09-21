@@ -50,6 +50,11 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
             PacketPoolSize = 10_000
         };
 
+        if (NetworkMetricsDrawable.Instance is { } networkMetricsDrawable)
+        {
+            networkMetricsDrawable.NetStatistics = NetManager.Statistics;
+        }
+
         var networkThread = new Thread(NetworkLoop)
         {
             IsBackground = true,
@@ -332,7 +337,13 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
 
     public abstract void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod);
 
-    public abstract void OnNetworkLatencyUpdate(NetPeer peer, int latency);
+    public virtual void OnNetworkLatencyUpdate(NetPeer peer, int latency)
+    {
+        if (NetworkMetricsDrawable.Instance is { } networkMetricsDrawable)
+        {
+            networkMetricsDrawable.Latency = latency;
+        }
+    }
 
     public void Dispose()
     {

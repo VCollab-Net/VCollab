@@ -54,11 +54,18 @@ public partial class MainScreen : FadingScreen
                 },
 
                 // Room UI
-                _roomManageUI = new RoomManageDrawable()
+                _roomManageUI = new RoomManageDrawable
                 {
                     Anchor = Anchor.BottomLeft,
                     Origin = Anchor.BottomLeft,
                     Margin = new MarginPadding(12)
+                },
+
+                new NetworkMetricsDrawable
+                {
+                    Anchor = Anchor.TopLeft,
+                    Origin = Anchor.TopLeft,
+                    Margin = new MarginPadding(10)
                 },
 
                 // Temporary buttons

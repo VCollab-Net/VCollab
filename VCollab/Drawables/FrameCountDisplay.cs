@@ -13,11 +13,12 @@ public partial class FrameCountDisplay : CompositeDrawable
     {
         _drawThread = host.DrawThread;
 
+        Anchor = Anchor.TopCentre;
+        Origin = Anchor.TopCentre;
+
         AddInternal(
             _frameIndexSprite = new SpriteText
             {
-                Anchor = Anchor.TopLeft,
-                Origin = Anchor.TopLeft,
                 Colour = Colors.Primary
             }
         );

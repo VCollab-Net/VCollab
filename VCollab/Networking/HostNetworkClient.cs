@@ -95,6 +95,8 @@ public class HostNetworkClient : NetworkClient
 
     public override void OnNetworkLatencyUpdate(NetPeer peer, int latency)
     {
+        base.OnNetworkLatencyUpdate(peer, latency);
+
         // TODO Update latency
         if (_peerIdToChannelOffset.TryGetValue(peer.Id, out var channelOffset) && PeerStates[channelOffset] is { } peerState)
         {
