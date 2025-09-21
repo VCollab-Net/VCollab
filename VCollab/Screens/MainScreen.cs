@@ -180,6 +180,8 @@ public partial class MainScreen : FadingScreen
         {
             _periodicSaveTimer?.Dispose();
 
+            OnPeriodicSave(null);
+
             NetworkManager.NewNetworkFrameConsumer -= OnNewNetworkFrameConsumer;
         }
 

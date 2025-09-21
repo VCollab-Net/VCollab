@@ -58,7 +58,8 @@ public record VCollabSettings : IDependencyInjectionCandidate
 
     public void Save()
     {
-        // TODO Use safe save method by using intermediary file to avoid corruption (not talking from experience, trust)
-        File.WriteAllText(_storage.GetFullPath(FileName), JsonSerializer.Serialize(this, _serializerOptions));
+        using var saveStream = _storage.CreateFileSafely(FileName);
+
+        JsonSerializer.Serialize(saveStream, this, _serializerOptions);
     }
 }
