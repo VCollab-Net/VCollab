@@ -59,6 +59,9 @@ public sealed class PeerState : IDisposable
         ReadOnlySpan<byte> alphaData
     )
     {
+        // Update network metrics
+        NetworkMetricsDrawable.FramesReceived++;
+
         // Copy frame data for later use by the graphics pipeline
         if (!_buffersPool.TryPop(out var bufferWriter))
         {

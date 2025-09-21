@@ -287,6 +287,9 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
         var frameInformationData = _frameInformationDataBuffer.WrittenSpan;
 
         SendModelDataCore(textureData, alphaData, frameInformationData, frameInformation.FrameCount);
+
+        // Update metrics
+        NetworkMetricsDrawable.FramesSent++;
     }
 
     protected abstract void SendModelDataCore(
@@ -339,10 +342,7 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
 
     public virtual void OnNetworkLatencyUpdate(NetPeer peer, int latency)
     {
-        if (NetworkMetricsDrawable.Instance is { } networkMetricsDrawable)
-        {
-            networkMetricsDrawable.Latency = latency;
-        }
+        NetworkMetricsDrawable.Latency = latency;
     }
 
     public void Dispose()

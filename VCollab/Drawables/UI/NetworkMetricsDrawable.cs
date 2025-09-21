@@ -12,7 +12,10 @@ public partial class NetworkMetricsDrawable : Container
     public static NetworkMetricsDrawable? Instance { get; private set; }
 
     public NetStatistics? NetStatistics { get; set; } = null;
-    public int Latency { get; set; }
+    public static int Latency { get; set; }
+
+    public static long FramesReceived { get; set; } = 0;
+    public static long FramesSent { get; set; } = 0;
 
     private SpriteText _latencyValueText = null!;
 
@@ -22,6 +25,9 @@ public partial class NetworkMetricsDrawable : Container
     private SpriteText _packetsUpValueText = null!;
     private SpriteText _packetsDownValueText = null!;
 
+    private SpriteText _framesUpValueText = null!;
+    private SpriteText _framesDownValueText = null!;
+
     private const string PacketsValueFormat = "F1";
     private readonly TimeSpan UpdateInterval = TimeSpan.FromSeconds(1);
 
@@ -30,6 +36,8 @@ public partial class NetworkMetricsDrawable : Container
     private long _lastBytesSent = 0;
     private long _lastPacketsReceived = 0;
     private long _lastPacketsSent = 0;
+    private long _lastFramesReceived = 0;
+    private long _lastFramesSent = 0;
 
     public NetworkMetricsDrawable()
     {
@@ -39,7 +47,7 @@ public partial class NetworkMetricsDrawable : Container
     [BackgroundDependencyLoader]
     private void Load(TextureStore textureStore)
     {
-        Size = new Vector2(320, 104);
+        Size = new Vector2(320, 124);
 
         var arrowUpTexture = textureStore.Get("network-arrow-up");
         var arrowDownTexture = textureStore.Get("network-arrow-down");
@@ -160,6 +168,37 @@ public partial class NetworkMetricsDrawable : Container
                         Colour = Colors.TextLight,
                         Text = "N/A"
                     },
+                    arrowDown(),
+
+                    // New line
+                    new Box
+                    {
+                        RelativeSizeAxes = Axes.X,
+                        Width = 1,
+                        Colour = Color4.Transparent
+                    },
+
+                    // Frames
+                    new SpriteText
+                    {
+                        Margin = new MarginPadding { Right = 3 },
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.Primary,
+                        Text = "Frames: "
+                    },
+                    _framesUpValueText = new SpriteText
+                    {
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.TextLight,
+                        Text = "N/A"
+                    },
+                    arrowUp(),
+                    _framesDownValueText = new SpriteText
+                    {
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.TextLight,
+                        Text = "N/A"
+                    },
                     arrowDown()
                 ]
             },
@@ -193,15 +232,22 @@ public partial class NetworkMetricsDrawable : Container
             var packetsUp = (NetStatistics.PacketsSent - _lastPacketsSent) / elapsed.TotalSeconds;
             var packetsDown = (NetStatistics.PacketsReceived - _lastPacketsReceived) / elapsed.TotalSeconds;
 
+            var framesUp = (FramesSent - _lastFramesSent) / elapsed.TotalSeconds;
+            var framesDown = (FramesReceived - _lastFramesReceived) / elapsed.TotalSeconds;
+
             _lastBytesSent = NetStatistics.BytesSent;
             _lastBytesReceived = NetStatistics.BytesReceived;
             _lastPacketsReceived = NetStatistics.PacketsReceived;
             _lastPacketsSent = NetStatistics.PacketsSent;
+            _lastFramesSent = FramesSent;
+            _lastFramesReceived = FramesReceived;
 
             _bitrateUpValueText.Text = $"{bitrateUp.Bytes().ToString()}/s";
             _bitrateDownValueText.Text = $"{bitrateDown.Bytes().ToString()}/s";
             _packetsUpValueText.Text = $"{packetsUp.ToString(PacketsValueFormat)} pk/s";
             _packetsDownValueText.Text = $"{packetsDown.ToString(PacketsValueFormat)} pk/s";
+            _framesUpValueText.Text = $"{framesUp.ToString(PacketsValueFormat)} fps";
+            _framesDownValueText.Text = $"{framesDown.ToString(PacketsValueFormat)} fps";
 
             _latencyValueText.Text = $"{Latency} ms";
         }
