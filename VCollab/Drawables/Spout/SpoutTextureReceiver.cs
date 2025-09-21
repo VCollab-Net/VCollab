@@ -12,7 +12,7 @@ using Texture = osu.Framework.Graphics.Textures.Texture;
 
 namespace VCollab.Drawables.Spout;
 
-public partial class SpoutTextureReceiver : Drawable, ITextureProvider
+public sealed partial class SpoutTextureReceiver : Drawable, ITextureProvider
 {
     public event Action<Texture?>? TextureUpdated;
 
@@ -37,7 +37,9 @@ public partial class SpoutTextureReceiver : Drawable, ITextureProvider
 
     private VeldridRenderer _renderer = null!;
     private Scheduler _drawThreadScheduler = null!;
-    private SpoutReceiver? _spoutReceiver;
+    private SpoutReceiver? _spoutReceiver = null;
+
+    private readonly Lock _spoutReceiverLock = new();
 
     private bool _needsNameUpdate = false;
     private bool _isInitialized = false;
@@ -114,34 +116,36 @@ public partial class SpoutTextureReceiver : Drawable, ITextureProvider
 
     private void DrawThreadTask()
     {
+        // The receiver is/has being disposed, skip drawing
+        if (!_spoutReceiverLock.TryEnter() || _spoutReceiver is null)
+        {
+            return;
+        }
+
         // Check if name has been updated
         if (_needsNameUpdate)
         {
-            _spoutReceiver!.SenderName = SenderName;
+            _spoutReceiver.SenderName = SenderName;
 
             _needsNameUpdate = false;
         }
 
         // Check if texture has been updated
-        if (_spoutReceiver!.IsUpdated())
+        if (_spoutReceiver.IsUpdated())
         {
             Logger.Log("Spout2 texture updated");
             InitializeReceiverTexture();
         }
 
         // Copy texture to internal SpoutDx class texture
-        if (!_spoutReceiver!.ReceiveTexture())
+        if (!_spoutReceiver.ReceiveTexture())
         {
             Logger.Log("Could not receive texture!", level: LogLevel.Important);
 
             return;
         }
 
-        // TODO Do something with this?
-        // if (_spoutReceiver.IsFrameNew())
-        // {
-        //
-        // }
+        _spoutReceiverLock.Exit();
     }
 
     private void InitializeReceiverTexture()
@@ -185,7 +189,14 @@ public partial class SpoutTextureReceiver : Drawable, ITextureProvider
     {
         if (disposing)
         {
-            _spoutReceiver?.Dispose();
+            Logger.Log("SpoutTextureReceiver disposed", LoggingTarget.Runtime, LogLevel.Debug);
+
+            // Wait for drawing thread to finish its work before disposing
+            using (_spoutReceiverLock.EnterScope())
+            {
+                _spoutReceiver?.Dispose();
+                _spoutReceiver = null;
+            }
         }
 
         base.Dispose(disposing);

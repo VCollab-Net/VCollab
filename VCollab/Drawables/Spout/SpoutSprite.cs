@@ -53,8 +53,6 @@ public partial class SpoutSprite : Sprite
 
             _needsTextureUpdate = false;
         }
-
-        base.Update();
     }
 
     protected override void Dispose(bool isDisposing)
