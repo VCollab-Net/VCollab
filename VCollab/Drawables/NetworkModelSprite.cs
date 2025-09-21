@@ -233,10 +233,17 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
     {
         if (disposing)
         {
-            _jpegDecompressor.Dispose();
-
             // This frame consumer is disposed when the peer state becomes invalid, most often due to disconnect
-            Expire();
+            if (Parent is DraggableResizableSprite resizableSprite)
+            {
+                Parent.Expire();
+            }
+            else
+            {
+                Expire();
+            }
+
+            _jpegDecompressor.Dispose();
         }
 
         base.Dispose(disposing);

@@ -41,10 +41,12 @@ public class PeerNetworkClient : NetworkClient
     public override void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
     {
         // TODO Handle host disconnect, this should leave room and allow join/creating a new one
+        Logger.Log($"Disconnected from host '{PeerStates[HostChannelOffset]?.Name}' ({disconnectInfo.Reason})", LoggingTarget.Network);
+
+        PeerStates[HostChannelOffset]?.Dispose();
+        PeerStates[HostChannelOffset] = null;
         _hostPeer = null;
         _channelOffset = null;
-
-        Logger.Log($"OnPeerDisconnected ({disconnectInfo.Reason})", LoggingTarget.Network);
     }
 
     public override void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
@@ -129,7 +131,7 @@ public class PeerNetworkClient : NetworkClient
     public override void OnNetworkLatencyUpdate(NetPeer peer, int latency)
     {
         // TODO Update latency
-        // Logger.Log($"Latency to host: {latency}", LoggingTarget.Network);
+        Logger.Log($"Latency to host: {latency}", LoggingTarget.Network);
     }
 
     public void ConnectToRoom(string name, string roomToken)

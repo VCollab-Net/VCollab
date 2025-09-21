@@ -48,6 +48,8 @@ public class HostNetworkClient : NetworkClient
     {
         if (_peerIdToChannelOffset.TryGetValue(peer.Id, out var channelOffset))
         {
+            Logger.Log($"Peer '{PeerStates[channelOffset]?.Name}' disconnected, informing other peers...");
+
             SendInformationMessageToAllExcept(peer, new DisconnectedPeerMessage(channelOffset));
 
             PeerStates[channelOffset]?.Dispose();
@@ -94,7 +96,10 @@ public class HostNetworkClient : NetworkClient
     public override void OnNetworkLatencyUpdate(NetPeer peer, int latency)
     {
         // TODO Update latency
-        // Logger.Log($"Latency to peer ({peer.Id}): {latency}", LoggingTarget.Network, LogLevel.Debug);
+        if (_peerIdToChannelOffset.TryGetValue(peer.Id, out var channelOffset) && PeerStates[channelOffset] is { } peerState)
+        {
+            Logger.Log($"Latency to peer ({peerState.Name}): {latency}", LoggingTarget.Network, LogLevel.Debug);
+        }
     }
 
     private void HandleInformationMessage(NetPeer peer, NetPacketReader reader)

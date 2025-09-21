@@ -10,6 +10,7 @@ namespace VCollab;
 public partial class VCollabGame : Game
 {
     private ScreenStack _screenStack = null!;
+    private NetworkManager? _networkManager = null;
 
     [BackgroundDependencyLoader]
     private void Load()
@@ -33,9 +34,9 @@ public partial class VCollabGame : Game
         dependencies.Cache(settings);
 
         // Network manager
-        var networkManager = new NetworkManager(Host);
+        _networkManager = new NetworkManager(Host);
 
-        dependencies.Cache(networkManager);
+        dependencies.Cache(_networkManager);
 
         return dependencies;
     }
@@ -69,5 +70,15 @@ public partial class VCollabGame : Game
 
             _screenStack
         ]);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _networkManager?.Dispose();
+        }
+
+        base.Dispose(disposing);
     }
 }

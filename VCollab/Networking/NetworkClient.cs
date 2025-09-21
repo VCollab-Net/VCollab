@@ -351,6 +351,8 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
                 peerState?.Dispose();
             }
 
+            NetManager.DisconnectAll();
+            NetManager.PollEvents();
             NetManager.Stop();
         }
     }
