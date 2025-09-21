@@ -4,6 +4,7 @@ using MemoryPack;
 using osu.Framework.Logging;
 using VCollab.Networking.Information;
 using VCollab.Signaling.Shared;
+using VCollab.Utils;
 
 namespace VCollab.Networking;
 
@@ -135,7 +136,7 @@ public class PeerNetworkClient : NetworkClient
         NetManager.NatPunchModule.SendNatIntroduceRequest(
             SignalingUtils.ServerUrl,
             SignalingUtils.ServerPort,
-            JsonSerializer.Serialize(requestData)
+            JsonSerializer.Serialize(requestData, JsonSourceGenerationContext.Default.NatRequestData)
         );
     }
 

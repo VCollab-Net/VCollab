@@ -108,8 +108,7 @@ public partial class SpoutSenderContainer : BufferedContainer
             // Do not wait for the copy to be done, the framework will do that for us
             _renderer.Device.SubmitCommands(commands);
 
-            var deviceTexture = _textureCopy.GetDeviceTexture();
-            var nativePointer = ReflectionExtensions.GetId3d11Texture2DNativePointer(deviceTexture);
+            var nativePointer = _textureCopy.NativePointer;
 
             if (!_spoutSender.SendTexture(nativePointer))
             {

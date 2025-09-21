@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using osu.Framework.Platform;
+using VCollab.Utils;
 
 namespace VCollab.Settings;
 
@@ -14,15 +15,10 @@ public record VCollabSettings : IDependencyInjectionCandidate
     public required SpoutSourceSettings? SpoutSourceSettings { get; set; }
     public UserModelSettings UserModelSettings { get; set; } = new();
 
-    private readonly JsonSerializerOptions _serializerOptions = new()
-    {
-        WriteIndented = true
-    };
-
     private Storage _storage = null!;
 
     [JsonConstructor]
-    private VCollabSettings()
+    public VCollabSettings()
     {
 
     }
@@ -34,7 +30,8 @@ public record VCollabSettings : IDependencyInjectionCandidate
             var settingsPath = storage.GetFullPath(FileName, true);
 
             var settings = JsonSerializer.Deserialize<VCollabSettings>(
-                File.ReadAllText(settingsPath)
+                File.ReadAllText(settingsPath),
+                JsonSourceGenerationContext.Default.VCollabSettings
             );
 
             if (settings is not null)
@@ -60,6 +57,6 @@ public record VCollabSettings : IDependencyInjectionCandidate
     {
         using var saveStream = _storage.CreateFileSafely(FileName);
 
-        JsonSerializer.Serialize(saveStream, this, _serializerOptions);
+        JsonSerializer.Serialize(saveStream, this, JsonSourceGenerationContext.Default.VCollabSettings);
     }
 }

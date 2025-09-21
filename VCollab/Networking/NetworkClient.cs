@@ -7,6 +7,7 @@ using LiteNetLib;
 using MemoryPack;
 using osu.Framework.Logging;
 using VCollab.Signaling.Shared;
+using VCollab.Utils;
 using VCollab.Utils.Graphics;
 
 namespace VCollab.Networking;
@@ -113,7 +114,7 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
 
     public void OnNatIntroductionSuccess(IPEndPoint targetEndPoint, NatAddressType type, string token)
     {
-        var natIntroductionData = JsonSerializer.Deserialize<NatIntroductionData>(token);
+        var natIntroductionData = JsonSerializer.Deserialize<NatIntroductionData>(token, JsonSourceGenerationContext.Default.NatIntroductionData);
 
         if (natIntroductionData is not null)
         {

@@ -8,6 +8,12 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <SelfContained>true</SelfContained>
+        <PublishSingleFile>true</PublishSingleFile>
+        <PublishTrimmed>true</PublishTrimmed>
+    </PropertyGroup>
+
     <ItemGroup>
       <ProjectReference Include="..\libjpeg-turbo-net\libjpeg-turbo-net\libjpeg-turbo-net.csproj" />
       <ProjectReference Include="..\osu-framework\osu.Framework\osu.Framework.csproj" />
