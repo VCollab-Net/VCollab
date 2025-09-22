@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <ApplicationIcon>App.ico</ApplicationIcon>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -25,6 +26,7 @@
 
     <ItemGroup>
       <EmbeddedResource Include="Resources\**\*.*" Exclude="Resources\**\*.ai" />
+      <EmbeddedResource Include="App.ico" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using osu.Framework.IO.Stores;
+using osu.Framework.Platform;
 using osu.Framework.Screens;
 using VCollab.Networking;
 using VCollab.Screens;
@@ -73,6 +74,19 @@ public partial class VCollabGame : Game
 
             _screenStack
         ]);
+    }
+
+    public override void SetHost(GameHost host)
+    {
+        base.SetHost(host);
+
+        var iconStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(GetType(), "App.ico");
+        if (iconStream is not null)
+        {
+            host.Window.SetIconFromStream(iconStream);
+        }
+
+        host.Window.Title = Name;
     }
 
     protected override void Dispose(bool disposing)
