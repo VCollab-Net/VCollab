@@ -16,6 +16,7 @@ public partial class NetworkMetricsDrawable : Container
 
     public static long FramesReceived { get; set; } = 0;
     public static long FramesSent { get; set; } = 0;
+    public static long FramesSkipped { get; set; } = 0;
 
     private SpriteText _latencyValueText = null!;
 
@@ -27,6 +28,8 @@ public partial class NetworkMetricsDrawable : Container
 
     private SpriteText _framesUpValueText = null!;
     private SpriteText _framesDownValueText = null!;
+
+    private SpriteText _framesSkippedValueText = null!;
 
     private const string PacketsValueFormat = "F1";
     private readonly TimeSpan UpdateInterval = TimeSpan.FromSeconds(1);
@@ -47,7 +50,7 @@ public partial class NetworkMetricsDrawable : Container
     [BackgroundDependencyLoader]
     private void Load(TextureStore textureStore)
     {
-        Size = new Vector2(320, 124);
+        Size = new Vector2(320, 142);
 
         var arrowUpTexture = textureStore.Get("network-arrow-up");
         var arrowDownTexture = textureStore.Get("network-arrow-down");
@@ -65,6 +68,13 @@ public partial class NetworkMetricsDrawable : Container
             Size = new Vector2(18, 18),
 
             Texture = arrowDownTexture
+        };
+
+        var newLine = () => new Box
+        {
+            RelativeSizeAxes = Axes.X,
+            Width = 1,
+            Colour = Color4.Transparent
         };
 
         Children =
@@ -110,12 +120,7 @@ public partial class NetworkMetricsDrawable : Container
                     },
 
                     // New line
-                    new Box
-                    {
-                        RelativeSizeAxes = Axes.X,
-                        Width = 1,
-                        Colour = Color4.Transparent
-                    },
+                    newLine(),
 
                     // Bitrate
                     new SpriteText
@@ -141,12 +146,7 @@ public partial class NetworkMetricsDrawable : Container
                     arrowDown(),
 
                     // New line
-                    new Box
-                    {
-                        RelativeSizeAxes = Axes.X,
-                        Width = 1,
-                        Colour = Color4.Transparent
-                    },
+                    newLine(),
 
                     // Packets
                     new SpriteText
@@ -171,12 +171,7 @@ public partial class NetworkMetricsDrawable : Container
                     arrowDown(),
 
                     // New line
-                    new Box
-                    {
-                        RelativeSizeAxes = Axes.X,
-                        Width = 1,
-                        Colour = Color4.Transparent
-                    },
+                    newLine(),
 
                     // Frames
                     new SpriteText
@@ -199,7 +194,22 @@ public partial class NetworkMetricsDrawable : Container
                         Colour = Colors.TextLight,
                         Text = "N/A"
                     },
-                    arrowDown()
+                    arrowDown(),
+
+                    newLine(),
+                    new SpriteText
+                    {
+                        Margin = new MarginPadding { Right = 3 },
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.Primary,
+                        Text = "Frameskip: "
+                    },
+                    _framesSkippedValueText = new SpriteText
+                    {
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.TextLight,
+                        Text = "N/A"
+                    }
                 ]
             },
         ];
@@ -248,6 +258,7 @@ public partial class NetworkMetricsDrawable : Container
             _packetsDownValueText.Text = $"{packetsDown.ToString(PacketsValueFormat)} pk/s";
             _framesUpValueText.Text = $"{framesUp.ToString(PacketsValueFormat)} fps";
             _framesDownValueText.Text = $"{framesDown.ToString(PacketsValueFormat)} fps";
+            _framesSkippedValueText.Text = FramesSkipped.ToString();
 
             _latencyValueText.Text = $"{Latency} ms";
         }

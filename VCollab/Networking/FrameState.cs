@@ -11,6 +11,7 @@ public sealed class FrameState
     private int _frameCount = 0;
     private int _receivedDataSize = 0;
     private NetworkFrameInformation? _networkFrameInformation = null;
+    private bool _frameCompleted = false;
 
     public FrameState(PeerState peerState)
     {
@@ -49,11 +50,18 @@ public sealed class FrameState
     {
         if (newFrameCount > _frameCount)
         {
+            // Update metrics if we skipped this frame
+            if (!_frameCompleted && _frameCount > 0)
+            {
+                NetworkMetricsDrawable.FramesSkipped++;
+            }
+
             // We're receiving data for a new frame, clear up state
             _frameCount = newFrameCount;
 
             _receivedDataSize = 0;
             _networkFrameInformation = null;
+            _frameCompleted = false;
             _dataBuffer.ResetWrittenCount();
         }
     }
@@ -63,6 +71,8 @@ public sealed class FrameState
         // A frame is complete when frame information and frame data has been received
         if (_networkFrameInformation is { } frameInformation && _receivedDataSize == frameInformation.TotalDataSize)
         {
+            _frameCompleted = true;
+
             _dataBuffer.Advance(_receivedDataSize);
 
             var dataSpan = _dataBuffer.WrittenSpan;

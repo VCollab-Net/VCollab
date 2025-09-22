@@ -110,6 +110,8 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
             {
                 frameData.Dispose();
 
+                NetworkMetricsDrawable.FramesSkipped++;
+
                 continue;
             }
 
