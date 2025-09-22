@@ -10,6 +10,8 @@ namespace VCollab.Networking;
 
 public class PeerNetworkClient : NetworkClient
 {
+    protected override byte? DataChannelOffset => _channelOffset;
+
     private NetPeer? _hostPeer = null;
     private byte? _channelOffset = null;
 
@@ -50,39 +52,21 @@ public class PeerNetworkClient : NetworkClient
         _channelOffset = null;
     }
 
-    public override void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
+    public override void OnNetworkLatencyUpdate(NetPeer peer, int latency)
     {
-        if (channelNumber <= ReservedChannelsEnd)
-        {
-            if (channelNumber != InformationMessagesChannel)
-            {
-                Logger.Log($"Received message on invalid channel for client: {channelNumber}");
+        base.OnNetworkLatencyUpdate(peer, latency);
 
-                return;
-            }
-
-            HandleInformationMessage(reader);
-
-            return;
-        }
-
-        // This is model data
-        ReceiveModelData(reader.GetRemainingBytesSpan(), channelNumber);
+        // TODO Update latency
+        Logger.Log($"Latency to host ({PeerStates[HostChannelOffset]?.Name}): {latency}", LoggingTarget.Network);
     }
 
-    private void HandleInformationMessage(NetPacketReader reader)
+    protected override void SendRawData(ReadOnlySpan<byte> data, DeliveryMethod deliveryMethod)
     {
-        var message = MemoryPackSerializer.Deserialize<IInformationMessage>(reader.GetRemainingBytesSpan());
+        _hostPeer?.Send(data, deliveryMethod);
+    }
 
-        if (message is null)
-        {
-            Logger.Log("Received invalid/corrupted information message", LoggingTarget.Network, LogLevel.Important);
-
-            return;
-        }
-
-        Logger.Log($"Received information message: {message}", LoggingTarget.Network, LogLevel.Debug);
-
+    protected override void HandleInformationMessage(NetPeer _, IInformationMessage message)
+    {
         switch (message)
         {
             case ErrorMessage errorMessage:
@@ -138,25 +122,5 @@ public class PeerNetworkClient : NetworkClient
             SignalingUtils.ServerPort,
             JsonSerializer.Serialize(requestData, JsonSourceGenerationContext.Default.NatRequestData)
         );
-    }
-
-    protected override void SendModelDataCore(
-        ReadOnlySpan<byte> textureData,
-        ReadOnlySpan<byte> alphaData,
-        ReadOnlySpan<byte> frameInformationData,
-        int frameCount
-    )
-    {
-        if (_hostPeer is not null && _channelOffset is { } channelOffset)
-        {
-            SendModelDataToPeer(
-                textureData,
-                alphaData,
-                frameInformationData,
-                frameCount,
-                _hostPeer,
-                channelOffset
-            );
-        }
     }
 }

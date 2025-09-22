@@ -14,7 +14,9 @@ public sealed class PeerState : IDisposable
 
     public ConcurrentBag<FullFrameData> AvailableFrames { get; } = new();
 
-    private readonly FrameState[] _frameStates;
+    private const int FrameStatesLength = 9;
+
+    private readonly FrameState[] _frameStates = new FrameState[FrameStatesLength];
     private readonly Stack<ArrayBufferWriter<byte>> _buffersPool = new(15);
     private readonly INetworkFrameConsumer _frameConsumer;
 
@@ -24,7 +26,6 @@ public sealed class PeerState : IDisposable
         Name = name;
         _frameConsumer = frameConsumer;
 
-        _frameStates = new FrameState[10];
         for (var i = 0; i < _frameStates.Length; i++)
         {
             _frameStates[i] = new FrameState(this);

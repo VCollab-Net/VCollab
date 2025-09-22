@@ -29,8 +29,9 @@ public sealed class FrameState
 
     public void ReadFrameData(ReadOnlySpan<byte> data)
     {
-        var frameCount = BitConverter.ToInt32(data);
-        var chunkOffset = BitConverter.ToInt16(data[sizeof(int)..]);
+        // We don't need to read channel number here
+        var frameCount = BitConverter.ToInt32(data[sizeof(byte)..]);
+        var chunkOffset = BitConverter.ToInt16(data[(sizeof(byte) + sizeof(int))..]);
 
         CheckFrameInvalidation(frameCount);
 

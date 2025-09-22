@@ -10,6 +10,8 @@ namespace VCollab.Networking;
 
 public class HostNetworkClient : NetworkClient
 {
+    protected override byte? DataChannelOffset => HostChannelOffset;
+
     private readonly CancellationTokenSource _natLoopCancellationTokenSource;
     private readonly List<NetPeer> _peers = [];
     private readonly Dictionary<int, int> _peerIdToChannelOffset = [];
@@ -61,35 +63,24 @@ public class HostNetworkClient : NetworkClient
         Logger.Log($"OnPeerDisconnected ({peer.Id} - {disconnectInfo.Reason}), remaining connected peers: {_peers.Count}", LoggingTarget.Network);
     }
 
-    public override void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod)
+    protected override void SendRawData(ReadOnlySpan<byte> data, DeliveryMethod deliveryMethod)
     {
-        if (channelNumber <= ReservedChannelsEnd)
+        for (var i = 0; i < _peers.Count; i++)
         {
-            if (channelNumber != InformationMessagesChannel)
-            {
-                Logger.Log($"Received message on invalid channel for host: {channelNumber}", LoggingTarget.Network);
-
-                return;
-            }
-
-            HandleInformationMessage(peer, reader);
-
-            return;
+            _peers[i].Send(data, deliveryMethod);
         }
+    }
 
-        // This is model data
-        var data = reader.GetRemainingBytesSpan();
-
-        ReceiveModelData(data, channelNumber);
-
-        // Forward to other peers except to the one that sent this data
+    protected override void OnModelDataReceived(NetPeer peer, ReadOnlySpan<byte> data)
+    {
+        // Always forward model data to other peers
         for (var i = 0; i < _peers.Count; i++)
         {
             var otherPeer = _peers[i];
 
             if (otherPeer.Id != peer.Id)
             {
-                otherPeer.Send(data, channelNumber, deliveryMethod);
+                otherPeer.Send(data, ModelDataDeliveryMethod);
             }
         }
     }
@@ -101,23 +92,12 @@ public class HostNetworkClient : NetworkClient
         // TODO Update latency
         if (_peerIdToChannelOffset.TryGetValue(peer.Id, out var channelOffset) && PeerStates[channelOffset] is { } peerState)
         {
-            Logger.Log($"Latency to peer ({peerState.Name}): {latency}", LoggingTarget.Network, LogLevel.Debug);
+            Logger.Log($"Latency to peer ({peerState.Name}): {latency}", LoggingTarget.Network);
         }
     }
 
-    private void HandleInformationMessage(NetPeer peer, NetPacketReader reader)
+    protected override void HandleInformationMessage(NetPeer peer, IInformationMessage message)
     {
-        var message = MemoryPackSerializer.Deserialize<IInformationMessage>(reader.GetRemainingBytesSpan());
-
-        if (message is null)
-        {
-            Logger.Log("Received invalid/corrupted information message", LoggingTarget.Network, LogLevel.Important);
-
-            return;
-        }
-
-        Logger.Log($"Received information message: {message}", LoggingTarget.Network, LogLevel.Debug);
-
         switch (message)
         {
             case PeerConnectionMessage peerConnectionMessage:
@@ -205,23 +185,6 @@ public class HostNetworkClient : NetworkClient
                 peer.Send(data, InformationMessagesChannel, InformationMessagesDeliveryMethod);
             }
         }
-    }
-
-    protected override void SendModelDataCore(
-        ReadOnlySpan<byte> textureData,
-        ReadOnlySpan<byte> alphaData,
-        ReadOnlySpan<byte> frameInformationData,
-        int frameCount
-    )
-    {
-        SendModelDataToPeers(
-            textureData,
-            alphaData,
-            frameInformationData,
-            frameCount,
-            _peers,
-            HostChannelOffset
-        );
     }
 
     protected override void Dispose(bool disposing)

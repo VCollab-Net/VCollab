@@ -2,10 +2,10 @@ using System.Buffers;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json;
-using K4os.Compression.LZ4;
 using LiteNetLib;
 using MemoryPack;
 using osu.Framework.Logging;
+using VCollab.Networking.Information;
 using VCollab.Signaling.Shared;
 using VCollab.Utils;
 using VCollab.Utils.Graphics;
@@ -14,25 +14,24 @@ namespace VCollab.Networking;
 
 public abstract class NetworkClient : INetEventListener, INatPunchListener, IDisposable
 {
-    protected const byte ReservedChannelsEnd = 9;
-    protected const byte DataChannelsStart = ReservedChannelsEnd + 1;
-
     protected const byte InformationMessagesChannel = 0;
     protected const DeliveryMethod InformationMessagesDeliveryMethod = DeliveryMethod.ReliableOrdered;
 
-    protected const DeliveryMethod ModelDataDeliveryMethod = DeliveryMethod.ReliableOrdered;
+    protected const DeliveryMethod ModelDataDeliveryMethod = DeliveryMethod.Unreliable;
 
-    protected const int MaxPeerChannelOffset = 23;
+    protected const int MaxPeerChannelOffset = 24;
     protected const int HostChannelOffset = 0;
 
-    public const int ChunkSize = 512 - 3; // Header size is apparently 3 for Unreliable packets (according to ChatGPT)
-    public const int ChunkHeaderSize = sizeof(int) + sizeof(short);
+    public const int ChunkSize = 1020;
+    public const int ChunkHeaderSize = sizeof(byte) + sizeof(int) + sizeof(short); // Channel + FrameCount + ChunkOffset
     public const int ChunkDataSize = ChunkSize - ChunkHeaderSize;
 
     protected readonly NetworkManager NetworkManager;
     protected readonly NetManager NetManager;
     protected readonly PeerState?[] PeerStates = new PeerState?[MaxPeerChannelOffset];
     protected bool IsRunning = true;
+
+    protected abstract byte? DataChannelOffset { get; }
 
     private int _frameChannelOffset = 0;
     private readonly ArrayBufferWriter<byte> _frameInformationDataBuffer = new();
@@ -43,11 +42,15 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
 
         NetManager = new NetManager(this)
         {
+            #if DEBUG
+            DisconnectTimeout = int.MaxValue,
+            #endif
+
             NatPunchEnabled = true,
-            // DisconnectTimeout = int.MaxValue,
             EnableStatistics = true,
             AutoRecycle = true,
-            ChannelsCount = 64,
+            UseNativeSockets = true,
+            ChannelsCount = 1,
             PacketPoolSize = 10_000
         };
 
@@ -144,119 +147,45 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
         return new PeerState(channelOffset, name, frameConsumer);
     }
 
-    protected void SendModelDataToPeer(
-        ReadOnlySpan<byte> textureData,
-        ReadOnlySpan<byte> alphaData,
-        ReadOnlySpan<byte> frameInformationData,
-        int frameCount,
+    public void OnNetworkReceive(
         NetPeer peer,
-        byte channelOffset)
+        NetPacketReader reader,
+        byte channelNumber,
+        DeliveryMethod deliveryMethod
+    )
     {
-        Span<byte> buffer = stackalloc byte[ChunkSize];
-
-        var infoChannel = (byte)((channelOffset * 10) + DataChannelsStart);
-        var frameDataChannel = (byte)(infoChannel + 1 + _frameChannelOffset);
-
-        peer.Send(frameInformationData, infoChannel, ModelDataDeliveryMethod);
-
-        // Texture and alpha data is too big to be sent in one packet, chunk it into smaller messages
-        var textureDataSize = textureData.Length;
-        var alphaDataSize = alphaData.Length;
-        var dataSize = textureDataSize + alphaDataSize;
-        var position = 0;
-        short chunkOffset = 0;
-
-        while (position < dataSize)
+        // Information data and model data use different delivery methods on the same channel
+        if (deliveryMethod is InformationMessagesDeliveryMethod)
         {
-            var toSend = Math.Min(ChunkDataSize, dataSize - position);
+            var message = MemoryPackSerializer.Deserialize<IInformationMessage>(reader.GetRemainingBytesSpan());
 
-            BitConverter.TryWriteBytes(buffer, frameCount);
-            BitConverter.TryWriteBytes(buffer[sizeof(int)..], chunkOffset);
-
-            // Write texture data first, then alpha data
-            if (position < textureDataSize)
+            if (message is null)
             {
-                var textureDataToWrite = Math.Min(toSend, textureDataSize - position);
+                Logger.Log("Received invalid/corrupted information message", LoggingTarget.Network, LogLevel.Important);
 
-                textureData[position..(position + textureDataToWrite)].CopyTo(buffer[ChunkHeaderSize..]);
-
-                // Check if we can fit some alpha data too in the rest of the buffer
-                if (textureDataToWrite < toSend)
-                {
-                    alphaData[..(toSend - textureDataToWrite)].CopyTo(buffer[(ChunkHeaderSize + textureDataToWrite)..]);
-                }
-            }
-            else
-            {
-                alphaData[(position - textureDataSize)..(position - textureDataSize + toSend)].CopyTo(buffer[ChunkHeaderSize..]);
+                return;
             }
 
-            peer.Send(buffer[..(ChunkHeaderSize + toSend)], frameDataChannel, ModelDataDeliveryMethod);
+            Logger.Log($"Received information message: {message}", LoggingTarget.Network, LogLevel.Debug);
 
-            position += toSend;
-            chunkOffset++;
+            HandleInformationMessage(peer, message);
+        }
+        // If it's not information, it is model data
+        else
+        {
+            var modelData = reader.GetRemainingBytesSpan();
+
+            ReceiveModelData(modelData);
+            OnModelDataReceived(peer, modelData);
         }
     }
 
-    protected void SendModelDataToPeers(
-        ReadOnlySpan<byte> textureData,
-        ReadOnlySpan<byte> alphaData,
-        ReadOnlySpan<byte> frameInformationData,
-        int frameCount,
-        List<NetPeer> peers,
-        byte channelOffset)
+    protected virtual void OnModelDataReceived(NetPeer peer, ReadOnlySpan<byte> data)
     {
-        Span<byte> buffer = stackalloc byte[ChunkSize];
-
-        var infoChannel = (byte)((channelOffset * 10) + DataChannelsStart);
-        var frameDataChannel = (byte)(infoChannel + 1 + _frameChannelOffset);
-
-        foreach (var peer in peers)
-        {
-            peer.Send(frameInformationData, infoChannel, ModelDataDeliveryMethod);
-        }
-
-        // Texture and alpha data is too big to be sent in one packet, chunk it into smaller messages
-        var textureDataSize = textureData.Length;
-        var alphaDataSize = alphaData.Length;
-        var dataSize = textureDataSize + alphaDataSize;
-        var position = 0;
-        short chunkOffset = 0;
-
-        while (position < dataSize)
-        {
-            var toSend = Math.Min(ChunkDataSize, dataSize - position);
-
-            BitConverter.TryWriteBytes(buffer, frameCount);
-            BitConverter.TryWriteBytes(buffer[sizeof(int)..], chunkOffset);
-
-            // Write texture data first, then alpha data
-            if (position < textureDataSize)
-            {
-                var textureDataToWrite = Math.Min(toSend, textureDataSize - position);
-
-                textureData[position..(position + textureDataToWrite)].CopyTo(buffer[ChunkHeaderSize..]);
-
-                // Check if we can fit some alpha data too in the rest of the buffer
-                if (textureDataToWrite < toSend)
-                {
-                    alphaData[..(toSend - textureDataToWrite)].CopyTo(buffer[(ChunkHeaderSize + textureDataToWrite)..]);
-                }
-            }
-            else
-            {
-                alphaData[(position - textureDataSize)..(position - textureDataSize + toSend)].CopyTo(buffer[ChunkHeaderSize..]);
-            }
-
-            foreach (var peer in peers)
-            {
-                peer.Send(buffer[..(ChunkHeaderSize + toSend)], frameDataChannel, ModelDataDeliveryMethod);
-            }
-
-            position += toSend;
-            chunkOffset++;
-        }
+        // Nothing to do here, this method is used for additional processing of model data like host forwarding
     }
+
+    protected abstract void HandleInformationMessage(NetPeer peer, IInformationMessage message);
 
     public void SendModelData(
         ReadOnlySpan<byte> textureData,
@@ -287,25 +216,84 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
 
         var frameInformationData = _frameInformationDataBuffer.WrittenSpan;
 
-        SendModelDataCore(textureData, alphaData, frameInformationData, frameInformation.FrameCount);
+        if (DataChannelOffset is { } dataChannelOffset)
+        {
+            SendModelDataChunks(textureData, alphaData, frameInformationData, frameInformation.FrameCount, dataChannelOffset);
+        }
 
         // Update metrics
         NetworkMetricsDrawable.FramesSent++;
     }
 
-    protected abstract void SendModelDataCore(
+    private void SendModelDataChunks(
         ReadOnlySpan<byte> textureData,
         ReadOnlySpan<byte> alphaData,
         ReadOnlySpan<byte> frameInformationData,
-        int frameCount
-    );
-
-    protected void ReceiveModelData(ReadOnlySpan<byte> data, byte channelNumber)
+        int frameCount,
+        byte dataChannelOffset
+    )
     {
-        var (channelOffset, frameOffset) = Math.DivRem(channelNumber, (byte)10);
+        Span<byte> buffer = stackalloc byte[ChunkSize];
 
-        // Channel offset is index-based so we need to offset it correctly
-        channelOffset -= DataChannelsStart / 10;
+        var infoChannel = (byte)(dataChannelOffset * 10);
+        var frameDataChannel = (byte)(infoChannel + 1 + _frameChannelOffset);
+
+        // Always inject data channel at the start of the network packet
+        buffer[0] = infoChannel;
+        frameInformationData.CopyTo(buffer[1..]);
+
+        SendRawData(buffer[..(sizeof(byte) + frameInformationData.Length)], ModelDataDeliveryMethod);
+
+        // Set frame data channel once for buffer, this is reused for all chunks
+        buffer[0] = frameDataChannel;
+
+        // Texture and alpha data is too big to be sent in one packet, chunk it into smaller messages
+        var textureDataSize = textureData.Length;
+        var alphaDataSize = alphaData.Length;
+        var dataSize = textureDataSize + alphaDataSize;
+        var position = 0;
+        short chunkOffset = 0;
+
+        while (position < dataSize)
+        {
+            var toSend = Math.Min(ChunkDataSize, dataSize - position);
+
+            BitConverter.TryWriteBytes(buffer[sizeof(byte)..], frameCount);
+            BitConverter.TryWriteBytes(buffer[(sizeof(byte) + sizeof(int))..], chunkOffset);
+
+            // Write texture data first, then alpha data
+            if (position < textureDataSize)
+            {
+                var textureDataToWrite = Math.Min(toSend, textureDataSize - position);
+
+                textureData[position..(position + textureDataToWrite)].CopyTo(buffer[ChunkHeaderSize..]);
+
+                // Check if we can fit some alpha data too in the rest of the buffer
+                if (textureDataToWrite < toSend)
+                {
+                    alphaData[..(toSend - textureDataToWrite)].CopyTo(buffer[(ChunkHeaderSize + textureDataToWrite)..]);
+                }
+            }
+            else
+            {
+                alphaData[(position - textureDataSize)..(position - textureDataSize + toSend)].CopyTo(buffer[ChunkHeaderSize..]);
+            }
+
+            SendRawData(buffer[..(ChunkHeaderSize + toSend)], ModelDataDeliveryMethod);
+
+            position += toSend;
+            chunkOffset++;
+        }
+    }
+
+    protected abstract void SendRawData(ReadOnlySpan<byte> data, DeliveryMethod deliveryMethod);
+
+    private void ReceiveModelData(ReadOnlySpan<byte> data)
+    {
+        // Channel number is always the first byte of model data packets
+        var channelNumber = data[0];
+
+        var (channelOffset, frameOffset) = Math.DivRem(channelNumber, (byte)10);
 
         if (PeerStates[channelOffset] is not { } peerState)
         {
@@ -317,7 +305,7 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
         // Frame information channel
         if (frameOffset is 0)
         {
-            var frameInformation = MemoryPackSerializer.Deserialize<NetworkFrameInformation>(data);
+            var frameInformation = MemoryPackSerializer.Deserialize<NetworkFrameInformation>(data[sizeof(byte)..]);
 
             if (frameInformation.TotalDataSize <= 0)
             {
@@ -338,8 +326,6 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
     public abstract void OnPeerConnected(NetPeer peer);
 
     public abstract void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo);
-
-    public abstract void OnNetworkReceive(NetPeer peer, NetPacketReader reader, byte channelNumber, DeliveryMethod deliveryMethod);
 
     public virtual void OnNetworkLatencyUpdate(NetPeer peer, int latency)
     {
