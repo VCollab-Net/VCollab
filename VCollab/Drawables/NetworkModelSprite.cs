@@ -154,24 +154,22 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
 
         var textureInfo = frameToDisplay.TextureInfo;
 
+        PixelFormat pixelFormat;
         // First frame received, initial texture is always null
-        if (_targetTexture is null)
+        if (_targetTexture?.NativeTexture is not VeldridNativeTexture nativeTexture)
         {
-            EnsureTextureFormat(textureInfo, PixelFormat.R8G8B8A8UNorm);
+            pixelFormat = PixelFormat.R8G8B8A8UNorm;
         }
-
-        if (_targetTexture?.NativeTexture is not VeldridNativeTexture veldridTexture)
+        else
         {
-            return;
+            pixelFormat = nativeTexture.VeldridTexture.Format;
         }
-
-        var targetTexture = veldridTexture.VeldridTexture;
 
         // Check if texture needs re-initialization
-        EnsureTextureFormat(textureInfo, targetTexture.Format);
+        EnsureTextureFormat(textureInfo, pixelFormat, out nativeTexture);
 
-        UpdateTextureData(targetTexture, frameToDisplay.TextureDataSpan, textureInfo);
-        UpdateTextureAlpha(targetTexture, frameToDisplay.AlphaDataSpan, frameToDisplay.UncompressedAlphaDataSize);
+        UpdateTextureData(nativeTexture.VeldridTexture, frameToDisplay.TextureDataSpan, textureInfo);
+        UpdateTextureAlpha(nativeTexture.VeldridTexture, frameToDisplay.AlphaDataSpan, frameToDisplay.UncompressedAlphaDataSize);
 
         // Free up frame associated buffer
         frameToDisplay.Dispose();
@@ -215,14 +213,18 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
         _alphaUnpacker.UnpackAlphaData(targetTexture, alphaData);
     }
 
-    private void EnsureTextureFormat(TextureInfo textureInfo, PixelFormat textureFormat)
+    private void EnsureTextureFormat(
+        TextureInfo textureInfo,
+        PixelFormat textureFormat,
+        out VeldridNativeTexture nativeTexture
+    )
     {
         if (_targetTexture is null
             || _targetTexture.Width != textureInfo.Width
             || _targetTexture.Height != textureInfo.Height
             || textureFormat != textureInfo.PixelFormat)
         {
-            _targetTexture = _renderer.CreateTexture(new VeldridNativeTexture(
+            _targetTexture = _renderer.CreateTexture(nativeTexture = new VeldridNativeTexture(
                 _renderer,
                 textureInfo.Width,
                 textureInfo.Height,
@@ -232,6 +234,8 @@ public partial class NetworkModelSprite : Sprite, INetworkFrameConsumer
 
             _needsTextureUpdate = true;
         }
+
+        nativeTexture = (VeldridNativeTexture)_targetTexture.NativeTexture;
     }
 
     private async Task SaveFrameData(FullFrameData frameData)

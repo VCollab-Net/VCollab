@@ -75,6 +75,14 @@ public sealed class AlphaMaskUnpacker : IDisposable
         // Prepare input data into staging buffer
         var mappedStagingBuffer = _graphicsDevice.Map(_stagingBuffer, MapMode.Write);
 
+        // The mapped staging buffer is not directly resized, we need to wait for the next frame if it happens
+        if (mappedStagingBuffer.SizeInBytes < alphaData.Length)
+        {
+            _graphicsDevice.Unmap(_stagingBuffer);
+
+            return;
+        }
+
         var stagingData = new Span<byte>(mappedStagingBuffer.Data.ToPointer(), (int) mappedStagingBuffer.SizeInBytes);
         alphaData.CopyTo(stagingData);
 
