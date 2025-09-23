@@ -1,7 +1,7 @@
 #pragma kernel main
 
 // Input texture
-Texture2D<float4> InputTexture : register(t0);
+Texture2D<unorm float4> InputTexture : register(t0);
 
 // Output buffer: one entry per group of 32 pixels
 RWStructuredBuffer<uint> OutputBuffer : register(u0);

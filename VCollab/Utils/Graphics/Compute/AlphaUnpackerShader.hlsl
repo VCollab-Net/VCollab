@@ -1,7 +1,7 @@
 #pragma kernel main
 
 // Output texture: write to 32 pixels per input
-RWTexture2D<float4> OutputTexture : register(u0);
+RWTexture2D<unorm float4> OutputTexture : register(u0);
 
 // Input buffer: one uint per group
 StructuredBuffer<uint> InputBuffer : register(t0);

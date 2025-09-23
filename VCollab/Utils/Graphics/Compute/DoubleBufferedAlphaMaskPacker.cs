@@ -28,7 +28,6 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
     private int _gpuStagingIndex = 0;
 
     private uint _groupsCount;
-    private uint _outputSizeInBytes;
     private uint _regionOutputSizeInBytes;
 
     public DoubleBufferedAlphaMaskPacker(GraphicsDevice graphicsDevice)
@@ -97,16 +96,13 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
         commands.Dispatch(_groupsCount, 1, 1);
 
         // Copy output to staging buffer
-        commands.CopyBuffer(_outputBuffer, 0, targetBuffer, 0, _outputSizeInBytes);
+        commands.CopyBuffer(_outputBuffer, 0, targetBuffer, 0, _outputBuffer!.SizeInBytes);
 
         commands.End();
 
         _graphicsDevice.SubmitCommands(commands, targetResource.WaitFence);
 
         // Read previous frame staging texture on CPU if available (should most often be the case)
-
-        // TODO This could be more optimized if it was possible to reduce the device buffers size
-        // since it only contains leading 0's but for some reason reducing the buffers size mess up with the packer
         var readbackResource = _stagingBuffers[(_gpuStagingIndex + 1) % _stagingBuffers.Length];
 
         ReadOnlySpan<byte> data;
@@ -133,20 +129,15 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
 
     private void EnsureBufferFormat(Texture sourceTexture, ref DeviceBuffer? targetBuffer, TextureRegion textureRegion)
     {
-        var width = sourceTexture.Width;
-        var height = sourceTexture.Height;
-        var pixelCount = width * height;
-
         // Only dispatch for required region size
         var regionPixels = textureRegion.Width * textureRegion.Height;
 
         // One group is composed of 64 threads and each thread processes 32 pixels
         _groupsCount = (uint)MathF.Ceiling((float)regionPixels / (64 * 32));
-        _outputSizeInBytes = (uint)MathF.Ceiling((float)pixelCount / 8);
         _regionOutputSizeInBytes = (uint)MathF.Ceiling((float)regionPixels / 8);
 
         // Padding to uint size
-        var outputBufferSize = _outputSizeInBytes;
+        var outputBufferSize = _regionOutputSizeInBytes;
         if (outputBufferSize % sizeof(uint) != 0)
         {
             outputBufferSize += sizeof(uint) - (outputBufferSize % sizeof(uint));
@@ -156,11 +147,11 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
         _texture = sourceTexture;
 
         // Ensure target staging buffer has valid size
-        if (targetBuffer is null || targetBuffer.SizeInBytes != _outputSizeInBytes)
+        if (targetBuffer is null || targetBuffer.SizeInBytes != outputBufferSize)
         {
             targetBuffer?.Dispose();
             targetBuffer = _resourceFactory.CreateBuffer(new BufferDescription(
-                _outputSizeInBytes,
+                outputBufferSize,
                 BufferUsage.Staging
             ));
         }
