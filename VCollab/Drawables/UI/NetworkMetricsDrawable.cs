@@ -50,32 +50,150 @@ public partial class NetworkMetricsDrawable : Container
     [BackgroundDependencyLoader]
     private void Load(TextureStore textureStore)
     {
-        Size = new Vector2(320, 142);
+        Size = new Vector2(330, 142);
 
         var arrowUpTexture = textureStore.Get("network-arrow-up");
         var arrowDownTexture = textureStore.Get("network-arrow-down");
 
         var arrowUp = () => new Sprite
         {
-            Margin = new MarginPadding { Left = 1, Top = 1, Right = 6 },
+            Margin = new MarginPadding { Left = 0, Top = 1, Right = 3 },
             Size = new Vector2(18, 18),
 
             Texture = arrowUpTexture
         };
         var arrowDown = () => new Sprite
         {
-            Margin = new MarginPadding { Left = 1, Top = 1 },
+            Margin = new MarginPadding { Left = 8, Top = 1, Right = 3 },
             Size = new Vector2(18, 18),
 
             Texture = arrowDownTexture
         };
 
-        var newLine = () => new Box
-        {
-            RelativeSizeAxes = Axes.X,
-            Width = 1,
-            Colour = Color4.Transparent
-        };
+        Drawable?[][] gridContent =
+        [
+            // Latency
+            [
+                new SpriteText
+                {
+                    Font = FontUsage.Default.With(size: 20),
+                    Colour = Colors.Primary,
+                    Text = "Latency: "
+                },
+                _latencyValueText = new SpriteText
+                {
+                    Margin = new MarginPadding { Left = 4 },
+                    Font = FontUsage.Default.With(size: 20),
+                    Colour = Colors.TextLight,
+                    Text = "N/A"
+                },
+                null
+            ],
+            // Frameskip
+            [
+                new SpriteText
+                {
+                    Font = FontUsage.Default.With(size: 20),
+                    Colour = Colors.Primary,
+                    Text = "Skipped: "
+                },
+                _framesSkippedValueText = new SpriteText
+                {
+                    Margin = new MarginPadding { Left = 4 },
+                    Font = FontUsage.Default.With(size: 20),
+                    Colour = Colors.TextLight,
+                    Text = "N/A"
+                },
+                null
+            ],
+            // Bitrate
+            [
+                new SpriteText
+                {
+                    Font = FontUsage.Default.With(size: 20),
+                    Colour = Colors.Primary,
+                    Text = "Bitrate:"
+                },
+                Horizontal
+                (
+                    arrowUp(),
+                    _bitrateUpValueText = new SpriteText
+                    {
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.TextLight,
+                        Text = "N/A"
+                    }
+                ),
+                Horizontal
+                (
+                    arrowDown(),
+                    _bitrateDownValueText = new SpriteText
+                    {
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.TextLight,
+                        Text = "N/A"
+                    }
+                )
+            ],
+            // Packets
+            [
+                new SpriteText
+                {
+                    Font = FontUsage.Default.With(size: 20),
+                    Colour = Colors.Primary,
+                    Text = "Packets: "
+                },
+                Horizontal
+                (
+                    arrowUp(),
+                    _packetsUpValueText = new SpriteText
+                    {
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.TextLight,
+                        Text = "N/A"
+                    }
+                ),
+                Horizontal
+                (
+                    arrowDown(),
+                    _packetsDownValueText = new SpriteText
+                    {
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.TextLight,
+                        Text = "N/A"
+                    }
+                )
+            ],
+            // Frames
+            [
+                new SpriteText
+                {
+                    Font = FontUsage.Default.With(size: 20),
+                    Colour = Colors.Primary,
+                    Text = "Frames: "
+                },
+                Horizontal
+                (
+                    arrowUp(),
+                    _framesUpValueText = new SpriteText
+                    {
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.TextLight,
+                        Text = "N/A"
+                    }
+                ),
+                Horizontal
+                (
+                    arrowDown(),
+                    _framesDownValueText = new SpriteText
+                    {
+                        Font = FontUsage.Default.With(size: 20),
+                        Colour = Colors.TextLight,
+                        Text = "N/A"
+                    }
+                )
+            ]
+        ];
 
         Children =
         [
@@ -88,7 +206,7 @@ public partial class NetworkMetricsDrawable : Container
             new FillFlowContainer
             {
                 RelativeSizeAxes = Axes.Both,
-                Direction = FillDirection.Full,
+                Direction = FillDirection.Vertical,
                 Padding = new MarginPadding(12, 8),
 
                 Children =
@@ -101,114 +219,27 @@ public partial class NetworkMetricsDrawable : Container
 
                         Font = FontUsage.Default.With(size: 22),
                         Colour = Colors.Primary,
-                        Text = "Network metrics"
+                        Text = "Network Metrics"
                     },
 
-                    // Latency
-                    new SpriteText
+                    new GridContainer
                     {
-                        Margin = new MarginPadding { Right = 2 },
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.Primary,
-                        Text = "Latency: "
-                    },
-                    _latencyValueText = new SpriteText
-                    {
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.TextLight,
-                        Text = "N/A"
-                    },
-
-                    // New line
-                    newLine(),
-
-                    // Bitrate
-                    new SpriteText
-                    {
-                        Margin = new MarginPadding { Right = 15 },
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.Primary,
-                        Text = "Bitrate:"
-                    },
-                    _bitrateUpValueText = new SpriteText
-                    {
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.TextLight,
-                        Text = "N/A"
-                    },
-                    arrowUp(),
-                    _bitrateDownValueText = new SpriteText
-                    {
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.TextLight,
-                        Text = "N/A"
-                    },
-                    arrowDown(),
-
-                    // New line
-                    newLine(),
-
-                    // Packets
-                    new SpriteText
-                    {
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.Primary,
-                        Text = "Packets: "
-                    },
-                    _packetsUpValueText = new SpriteText
-                    {
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.TextLight,
-                        Text = "N/A"
-                    },
-                    arrowUp(),
-                    _packetsDownValueText = new SpriteText
-                    {
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.TextLight,
-                        Text = "N/A"
-                    },
-                    arrowDown(),
-
-                    // New line
-                    newLine(),
-
-                    // Frames
-                    new SpriteText
-                    {
-                        Margin = new MarginPadding { Right = 3 },
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.Primary,
-                        Text = "Frames: "
-                    },
-                    _framesUpValueText = new SpriteText
-                    {
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.TextLight,
-                        Text = "N/A"
-                    },
-                    arrowUp(),
-                    _framesDownValueText = new SpriteText
-                    {
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.TextLight,
-                        Text = "N/A"
-                    },
-                    arrowDown(),
-
-                    newLine(),
-                    new SpriteText
-                    {
-                        Margin = new MarginPadding { Right = 3 },
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.Primary,
-                        Text = "Frameskip: "
-                    },
-                    _framesSkippedValueText = new SpriteText
-                    {
-                        Font = FontUsage.Default.With(size: 20),
-                        Colour = Colors.TextLight,
-                        Text = "N/A"
+                        RelativeSizeAxes = Axes.Both,
+                        RowDimensions =
+                        [
+                            new Dimension(GridSizeMode.AutoSize),
+                            new Dimension(GridSizeMode.AutoSize),
+                            new Dimension(GridSizeMode.AutoSize),
+                            new Dimension(GridSizeMode.AutoSize),
+                            new Dimension(GridSizeMode.AutoSize)
+                        ],
+                        ColumnDimensions =
+                        [
+                            new Dimension(GridSizeMode.Relative, .24f),
+                            new Dimension(GridSizeMode.Relative, .38f),
+                            new Dimension(GridSizeMode.Relative, .38f)
+                        ],
+                        Content = gridContent
                     }
                 ]
             },
@@ -216,6 +247,12 @@ public partial class NetworkMetricsDrawable : Container
 
         this.WithGlowEffect(Colors.Primary, 12, 8);
     }
+
+    private static FillFlowContainer Horizontal(params ReadOnlySpan<Drawable> drawables) => new FillFlowContainer
+    {
+        Direction = FillDirection.Horizontal,
+        Children = drawables.ToArray()
+    };
 
     protected override void Update()
     {
@@ -258,7 +295,7 @@ public partial class NetworkMetricsDrawable : Container
             _packetsDownValueText.Text = $"{packetsDown.ToString(PacketsValueFormat)} pk/s";
             _framesUpValueText.Text = $"{framesUp.ToString(PacketsValueFormat)} fps";
             _framesDownValueText.Text = $"{framesDown.ToString(PacketsValueFormat)} fps";
-            _framesSkippedValueText.Text = FramesSkipped.ToString();
+            _framesSkippedValueText.Text = $"{FramesSkipped} frames";
 
             _latencyValueText.Text = $"{Latency} ms";
         }
