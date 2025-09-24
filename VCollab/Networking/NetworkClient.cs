@@ -33,6 +33,8 @@ public abstract class NetworkClient : INetEventListener, INatPunchListener, IDis
 
     protected abstract byte? DataChannelOffset { get; }
 
+    public int ConnectedPeersCount => PeerStates.Count(state => state is not null);
+
     private int _frameChannelOffset = 0;
     private readonly ArrayBufferWriter<byte> _frameInformationDataBuffer = new();
 

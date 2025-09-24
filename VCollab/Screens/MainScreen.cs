@@ -4,6 +4,7 @@ using osu.Framework.Platform;
 using osu.Framework.Screens;
 using VCollab.Drawables.Spout;
 using VCollab.Networking;
+using VCollab.Services;
 using VCollab.Utils.Graphics;
 
 namespace VCollab.Screens;
@@ -14,6 +15,8 @@ public partial class MainScreen : FadingScreen
     private VCollabSettings Settings { get; set; } = null!;
     [Resolved]
     private NetworkManager NetworkManager { get; set; } = null!;
+    [Resolved]
+    private DiscordRpcService DiscordRpcService { get; set; } = null!;
 
     private SpoutSenderContainer _modelsCanvas = null!;
     private SpoutTextureReceiver _userModelSpoutReceiver = null!;
@@ -99,6 +102,7 @@ public partial class MainScreen : FadingScreen
         _periodicSaveTimer = new Timer(OnPeriodicSave, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
         NetworkManager.NewNetworkFrameConsumer += OnNewNetworkFrameConsumer;
+        DiscordRpcService.RoomJoined += DiscordRoomJoined;
     }
 
     private void OnNewNetworkFrameConsumer(INetworkFrameConsumer networkFrameConsumer)
@@ -111,6 +115,11 @@ public partial class MainScreen : FadingScreen
                 Y = DrawHeight * .3f
             }));
         }
+    }
+
+    private void DiscordRoomJoined()
+    {
+        _roomManageUI.Expire();
     }
 
     public override void OnResuming(ScreenTransitionEvent e)
@@ -183,6 +192,7 @@ public partial class MainScreen : FadingScreen
             OnPeriodicSave(null);
 
             NetworkManager.NewNetworkFrameConsumer -= OnNewNetworkFrameConsumer;
+            DiscordRpcService.RoomJoined -= DiscordRoomJoined;
         }
 
         base.Dispose(isDisposing);

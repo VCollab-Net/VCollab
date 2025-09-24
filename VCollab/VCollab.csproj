@@ -36,6 +36,7 @@
       <PackageReference Include="MemoryPack" Version="1.21.4" />
       <PackageReference Include="SpoutDx.Net.Interop" Version="0.1.0" />
       <PackageReference Include="TextCopy" Version="6.2.1" />
+      <PackageReference Include="VCollab.DiscordRichPresence" Version="1.7.0" />
     </ItemGroup>
 
     <ItemGroup>

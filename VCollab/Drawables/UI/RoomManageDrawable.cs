@@ -25,7 +25,7 @@ public partial class RoomManageDrawable : FillFlowContainer
         ([
             new SpriteText
             {
-                Font = FontUsage.Default.With(size: 24),
+                Font = FontUsage.Default.With(size: 26),
                 Margin = new MarginPadding { Left = 4f, Bottom = 6f},
 
                 Colour = Colors.Primary,

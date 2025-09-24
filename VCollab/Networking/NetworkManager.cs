@@ -1,4 +1,3 @@
-using System.Buffers.Text;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using VCollab.Utils;
@@ -13,6 +12,9 @@ public sealed class NetworkManager : IDisposable
     public GameHost GameHost { get; }
     public string RoomToken { get; private set; } = string.Empty;
     public string UserName { get; private set; } = string.Empty;
+    public NetworkState NetworkState { get; private set; } = NetworkState.Unconnected;
+
+    public int ConnectedPeersCount => _networkClient?.ConnectedPeersCount ?? 0;
 
     private NetworkClient? _networkClient = null;
 
@@ -30,6 +32,7 @@ public sealed class NetworkManager : IDisposable
 
         UserName = name;
         RoomToken = roomToken;
+        NetworkState = NetworkState.Hosting;
 
         Logger.Log($"Starting network client as Host: {name}", LoggingTarget.Network);
 
@@ -50,6 +53,7 @@ public sealed class NetworkManager : IDisposable
 
         UserName = name;
         RoomToken = roomToken;
+        NetworkState = NetworkState.Connected;
 
         Logger.Log($"Starting network client as Peer: {name}", LoggingTarget.Network);
 

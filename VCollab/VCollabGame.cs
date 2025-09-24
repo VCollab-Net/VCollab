@@ -5,6 +5,7 @@ using osu.Framework.Platform;
 using osu.Framework.Screens;
 using VCollab.Networking;
 using VCollab.Screens;
+using VCollab.Services;
 
 namespace VCollab;
 
@@ -13,6 +14,7 @@ public partial class VCollabGame : Game
     private ScreenStack _screenStack = null!;
     private NetworkManager? _networkManager = null;
     private VCollabSettings _settings = null!;
+    private DiscordRpcService _discordRpcService = null!;
 
     [BackgroundDependencyLoader]
     private void Load()
@@ -39,6 +41,11 @@ public partial class VCollabGame : Game
         _networkManager = new NetworkManager(Host);
 
         dependencies.Cache(_networkManager);
+
+        // Discord Rich Presence service
+        _discordRpcService = new DiscordRpcService(_networkManager, _settings);
+
+        dependencies.Cache(_discordRpcService);
 
         return dependencies;
     }
