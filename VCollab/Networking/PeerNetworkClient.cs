@@ -46,8 +46,13 @@ public class PeerNetworkClient : NetworkClient
         // TODO Handle host disconnect, this should leave room and allow join/creating a new one
         Logger.Log($"Disconnected from host '{PeerStates[HostChannelOffset]?.Name}' ({disconnectInfo.Reason})", LoggingTarget.Network);
 
-        PeerStates[HostChannelOffset]?.Dispose();
-        PeerStates[HostChannelOffset] = null;
+        // Clear peer states when host disconnects
+        for (var i = 0; i < PeerStates.Length; i++)
+        {
+            PeerStates[i]?.Dispose();
+            PeerStates[i] = null;
+        }
+
         _hostPeer = null;
         _channelOffset = null;
     }
