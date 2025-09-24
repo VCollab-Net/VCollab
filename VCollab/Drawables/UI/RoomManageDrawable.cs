@@ -1,9 +1,7 @@
-using System.Buffers.Text;
-using System.Security.Cryptography;
-using System.Text;
 using osu.Framework.Logging;
 using TextCopy;
 using VCollab.Networking;
+using VCollab.Utils;
 
 namespace VCollab.Drawables.UI;
 
@@ -79,7 +77,7 @@ public partial class RoomManageDrawable : FillFlowContainer
             return;
         }
 
-        var roomToken = GenerateToken();
+        var roomToken = RoomTokenUtils.GenerateToken();
 
         if (NetworkManager.StartAsHost(name, roomToken))
         {
@@ -114,7 +112,7 @@ public partial class RoomManageDrawable : FillFlowContainer
 
         var roomToken = ClipboardService.GetText();
 
-        if (string.IsNullOrWhiteSpace(roomToken) || roomToken.Length != NetworkManager.RoomTokenLength)
+        if (!RoomTokenUtils.IsValidToken(roomToken))
         {
             // TODO Notify user of wrong/no invite in clipboard
             Logger.Log("Could not find a valid token in clipboard", LoggingTarget.Runtime, LogLevel.Important);
@@ -136,12 +134,5 @@ public partial class RoomManageDrawable : FillFlowContainer
         {
             ClipboardService.SetText(NetworkManager.RoomToken);
         }
-    }
-
-    private string GenerateToken()
-    {
-        var token = RandomNumberGenerator.GetBytes(NetworkManager.RoomTokenSizeInBytes);
-
-        return Base64Url.EncodeToString(token);
     }
 }

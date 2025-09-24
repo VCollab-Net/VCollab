@@ -1,15 +1,13 @@
 using System.Buffers.Text;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
+using VCollab.Utils;
 using VCollab.Utils.Graphics;
 
 namespace VCollab.Networking;
 
 public sealed class NetworkManager : IDisposable
 {
-    public const int RoomTokenSizeInBytes = 6;
-    public int RoomTokenLength { get; } = Base64Url.GetEncodedLength(RoomTokenSizeInBytes);
-
     public event Action<INetworkFrameConsumer>? NewNetworkFrameConsumer;
 
     public GameHost GameHost { get; }
@@ -25,7 +23,7 @@ public sealed class NetworkManager : IDisposable
 
     public bool StartAsHost(string name, string roomToken)
     {
-        if (roomToken.Length != RoomTokenLength)
+        if (!RoomTokenUtils.IsValidToken(roomToken))
         {
             return false;
         }
@@ -45,7 +43,7 @@ public sealed class NetworkManager : IDisposable
 
     public bool StartAsPeer(string name, string roomToken)
     {
-        if (roomToken.Length != RoomTokenLength)
+        if (!RoomTokenUtils.IsValidToken(roomToken))
         {
             return false;
         }
