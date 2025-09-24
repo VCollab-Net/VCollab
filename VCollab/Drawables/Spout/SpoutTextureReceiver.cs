@@ -116,7 +116,7 @@ public sealed partial class SpoutTextureReceiver : Drawable, ITextureProvider
 
     private void DrawThreadTask()
     {
-        // The receiver is/has being disposed, skip drawing
+        // The receiver is/has been disposed, skip drawing
         if (!_spoutReceiverLock.TryEnter() || _spoutReceiver is null)
         {
             return;
@@ -189,14 +189,14 @@ public sealed partial class SpoutTextureReceiver : Drawable, ITextureProvider
     {
         if (disposing)
         {
-            Logger.Log("SpoutTextureReceiver disposed", LoggingTarget.Runtime, LogLevel.Debug);
-
             // Wait for drawing thread to finish its work before disposing
             using (_spoutReceiverLock.EnterScope())
             {
                 _spoutReceiver?.Dispose();
                 _spoutReceiver = null;
             }
+
+            Logger.Log("SpoutTextureReceiver disposed", LoggingTarget.Runtime, LogLevel.Debug);
         }
 
         base.Dispose(disposing);

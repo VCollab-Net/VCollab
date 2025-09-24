@@ -12,6 +12,8 @@ public record VCollabSettings : IDependencyInjectionCandidate
     // Used to invalidate old settings
     public int SettingsVersion { get; } = 1;
 
+    public string UserName { get; set; } = string.Empty;
+
     public required SpoutSourceSettings? SpoutSourceSettings { get; set; }
     public UserModelSettings UserModelSettings { get; set; } = new();
 

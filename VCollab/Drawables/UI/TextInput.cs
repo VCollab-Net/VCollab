@@ -28,7 +28,7 @@ public partial class TextInput : TextBox
 
     protected override void NotifyInputError()
     {
-        // Ignore invalid characters
+        // Ignore invalid characters or length limit
     }
 
     protected override SpriteText CreatePlaceholder() => new SpriteText

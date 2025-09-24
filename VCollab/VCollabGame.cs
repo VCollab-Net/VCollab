@@ -12,6 +12,7 @@ public partial class VCollabGame : Game
 {
     private ScreenStack _screenStack = null!;
     private NetworkManager? _networkManager = null;
+    private VCollabSettings _settings = null!;
 
     [BackgroundDependencyLoader]
     private void Load()
@@ -30,9 +31,9 @@ public partial class VCollabGame : Game
         var dependencies = new DependencyContainer(base.CreateChildDependencies(parent));
 
         // Read settings
-        var settings = VCollabSettings.Load(Host.Storage);
+        _settings = VCollabSettings.Load(Host.Storage);
 
-        dependencies.Cache(settings);
+        dependencies.Cache(_settings);
 
         // Network manager
         _networkManager = new NetworkManager(Host);
@@ -64,6 +65,12 @@ public partial class VCollabGame : Game
             Name = "MainScreenStack"
         };
         _screenStack.Push(new MainScreen());
+
+        // Show welcome screen if we detect it's a first-time boot
+        if (string.IsNullOrWhiteSpace(_settings.UserName))
+        {
+            _screenStack.Push(new WelcomeSetupScreen());
+        }
 
         AddRange([
             new Box

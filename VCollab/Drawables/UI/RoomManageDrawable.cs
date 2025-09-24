@@ -10,7 +10,9 @@ public partial class RoomManageDrawable : FillFlowContainer
     [Resolved]
     protected NetworkManager NetworkManager { get; private set; } = null!;
 
-    private readonly TextInput _nameTextInput;
+    [Resolved]
+    private VCollabSettings VCollabSettings { get; set; } = null!;
+
     private readonly FillFlowContainer _buttonsContainer;
 
     public RoomManageDrawable()
@@ -23,19 +25,11 @@ public partial class RoomManageDrawable : FillFlowContainer
         ([
             new SpriteText
             {
-                Font = FontUsage.Default.With(size: 22),
+                Font = FontUsage.Default.With(size: 24),
                 Margin = new MarginPadding { Left = 4f, Bottom = 6f},
 
-                Colour = Colors.TextLight,
+                Colour = Colors.Primary,
                 Text = "Room management"
-            },
-
-            _nameTextInput = new TextInput(Colors.Primary)
-            {
-                RelativeSizeAxes = Axes.None,
-                Width = 212,
-                Margin = new MarginPadding { Left = 6f, Bottom = 10f },
-                PlaceholderText = "Name"
             },
 
             _buttonsContainer = new FillFlowContainer
@@ -70,7 +64,7 @@ public partial class RoomManageDrawable : FillFlowContainer
     // Create new room by generating a new random token and copy it to clipboard
     private void HostButtonClicked()
     {
-        var name = _nameTextInput.Text;
+        var name = VCollabSettings.UserName;
 
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -81,8 +75,6 @@ public partial class RoomManageDrawable : FillFlowContainer
 
         if (NetworkManager.StartAsHost(name, roomToken))
         {
-            Remove(_nameTextInput, false);
-
             // Replace buttons with a "copy link" button to allow copying the token
             _buttonsContainer.Children =
             [
@@ -103,7 +95,7 @@ public partial class RoomManageDrawable : FillFlowContainer
     // Join a room by using the token in the clipboard
     private void JoinButtonClicked()
     {
-        var name = _nameTextInput.Text;
+        var name = VCollabSettings.UserName;
 
         if (string.IsNullOrWhiteSpace(name))
         {
