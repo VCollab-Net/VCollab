@@ -109,6 +109,10 @@ public sealed class DiscordRpcService : IDisposable
                     Max = 25,
                     Privacy = Party.PrivacySetting.Private,
                     Size = 1 + peersCount
+                },
+                Secrets = new Secrets
+                {
+                    Join = roomToken
                 }
             },
 
