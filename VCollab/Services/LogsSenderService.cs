@@ -1,7 +1,5 @@
 using System.IO.Compression;
-using Discord;
-using Discord.Webhook;
-using NUnit.Framework.Internal;
+using System.Net.Http.Headers;
 using osu.Framework.Logging;
 using osu.Framework.Platform;
 using Logger = osu.Framework.Logging.Logger;
@@ -18,7 +16,7 @@ public class LogsSenderService
 
     private readonly TimeSpan LogsMaximumAge = TimeSpan.FromDays(2);
 
-    private readonly DiscordWebhookClient _discordWebhookClient = new (WebhookUrl);
+    private readonly HttpClient _httpClient = new ();
     private readonly Storage _storage;
     private readonly VCollabSettings _settings;
 
@@ -76,9 +74,10 @@ public class LogsSenderService
 
                 // Send message with archive to Discord
                 inMemoryFile.Seek(0, SeekOrigin.Begin);
-                await _discordWebhookClient.SendFileAsync(
-                    text: $"Logs received from `{_settings.UserName}`",
-                    attachment: new FileAttachment(inMemoryFile, $"logs-{now.ToUnixTimeSeconds()}-{_settings.UserName}.zip")
+                await SendFileToWebhook(
+                    message: $"Logs received from `{_settings.UserName}`",
+                    filename: $"logs-{now.ToUnixTimeSeconds()}-{_settings.UserName}.zip",
+                    stream: inMemoryFile
                 );
             }
             catch (Exception e)
@@ -88,5 +87,26 @@ public class LogsSenderService
 
             _sendingLogs = false;
         });
+    }
+
+    public async Task SendFileToWebhook(string message, string filename, Stream stream)
+    {
+        using var form = new MultipartFormDataContent();
+
+        form.Add(new StringContent(message), "content");
+
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
+
+        form.Add(fileContent, "file", filename);
+
+        var response = await _httpClient.PostAsync(WebhookUrl, form);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+
+            Logger.Log($"Error while sending message to discord webhook: {body}", LoggingTarget.Network, LogLevel.Error);
+        }
     }
 }

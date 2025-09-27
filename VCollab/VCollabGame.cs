@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using osu.Framework.IO.Stores;
+using osu.Framework.Logging;
 using osu.Framework.Platform;
 using osu.Framework.Screens;
 using VCollab.Networking;
@@ -59,6 +60,8 @@ public partial class VCollabGame : Game
     protected override void LoadComplete()
     {
         base.LoadComplete();
+
+        Logger.Log($"Starting VCollab version {ThisAssembly.AssemblyInformationalVersion} built in {ThisAssembly.AssemblyConfiguration} configuration");
 
         // This ensures the window opens maximized right away
         if (Host.Window != null)
