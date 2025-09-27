@@ -17,6 +17,8 @@ public partial class MainScreen : FadingScreen
     private NetworkManager NetworkManager { get; set; } = null!;
     [Resolved]
     private DiscordRpcService DiscordRpcService { get; set; } = null!;
+    [Resolved]
+    private LogsSenderService LogsSenderService { get; set; } = null!;
 
     private SpoutSenderContainer _modelsCanvas = null!;
     private SpoutTextureReceiver _userModelSpoutReceiver = null!;
@@ -85,6 +87,13 @@ public partial class MainScreen : FadingScreen
                     Origin = Anchor.BottomRight,
                     BackgroundColour = Colors.Tertiary,
                     Clicked = host.Exit
+                },
+                new CircularSolidButton
+                {
+                    Anchor = Anchor.CentreRight,
+                    Origin = Anchor.CentreRight,
+                    BackgroundColour = Colors.Alt1,
+                    Clicked = LogsSenderService.SendLogs
                 },
 
                 new FrameCountDisplay()

@@ -9,4 +9,6 @@ public static class Colors
     public static Color4 Primary = new Color4(168, 174, 226, 255);
     public static Color4 Secondary = new Color4(250, 189, 222, 255);
     public static Color4 Tertiary = new Color4(255, 183, 154, 255);
+
+    public static Color4 Alt1 = new Color4(168, 213, 226, 255);
 }

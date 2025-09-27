@@ -15,6 +15,7 @@ public partial class VCollabGame : Game
     private NetworkManager? _networkManager = null;
     private VCollabSettings _settings = null!;
     private DiscordRpcService _discordRpcService = null!;
+    private LogsSenderService _logsSenderService = null!;
 
     [BackgroundDependencyLoader]
     private void Load()
@@ -46,6 +47,11 @@ public partial class VCollabGame : Game
         _discordRpcService = new DiscordRpcService(_networkManager, _settings);
 
         dependencies.Cache(_discordRpcService);
+
+        // Logs sender service
+        _logsSenderService = new LogsSenderService(Host.Storage, _settings);
+
+        dependencies.Cache(_logsSenderService);
 
         return dependencies;
     }
