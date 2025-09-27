@@ -96,7 +96,7 @@ public partial class MainScreen : FadingScreen
                     Clicked = LogsSenderService.SendLogs
                 },
 
-                new FrameCountDisplay()
+                new VersionDisplay()
             ]
         });
 
