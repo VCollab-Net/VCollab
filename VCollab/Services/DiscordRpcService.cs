@@ -2,7 +2,6 @@
 using DiscordRPC;
 using DiscordRPC.Logging;
 using DiscordRPC.Message;
-using Humanizer;
 using osu.Framework.Extensions;
 using osu.Framework.Logging;
 using VCollab.Networking;
@@ -141,7 +140,7 @@ public sealed class DiscordRpcService : IDisposable
         {
             if (Level <= DiscordRPC.Logging.LogLevel.Trace)
             {
-                Logger.Log(message.FormatWith(args), LoggingTarget.Network, LogLevel.Debug);
+                Logger.Log(string.Format(message, args), LoggingTarget.Network, LogLevel.Debug);
             }
         }
 
@@ -149,7 +148,7 @@ public sealed class DiscordRpcService : IDisposable
         {
             if (Level <= DiscordRPC.Logging.LogLevel.Info)
             {
-                Logger.Log(message.FormatWith(args), LoggingTarget.Network);
+                Logger.Log(string.Format(message, args), LoggingTarget.Network);
             }
         }
 
@@ -157,7 +156,7 @@ public sealed class DiscordRpcService : IDisposable
         {
             if (Level <= DiscordRPC.Logging.LogLevel.Warning)
             {
-                Logger.Log(message.FormatWith(args), LoggingTarget.Network, LogLevel.Important);
+                Logger.Log(string.Format(message, args), LoggingTarget.Network, LogLevel.Important);
             }
         }
 
@@ -165,7 +164,7 @@ public sealed class DiscordRpcService : IDisposable
         {
             if (Level <= DiscordRPC.Logging.LogLevel.Error)
             {
-                Logger.Log(message.FormatWith(args), LoggingTarget.Network, LogLevel.Error);
+                Logger.Log(string.Format(message, args), LoggingTarget.Network, LogLevel.Error);
             }
         }
 

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Humanizer;
 using LiteNetLib;
 using osu.Framework.Extensions.Color4Extensions;
 using osu.Framework.Graphics.Textures;
@@ -310,8 +309,8 @@ public partial class NetworkMetricsDrawable : Container
             _lastFramesSent = FramesSent;
             _lastFramesReceived = FramesReceived;
 
-            _bitrateUpValueText.Text = $"{bitrateUp.Bytes().ToString()}/s";
-            _bitrateDownValueText.Text = $"{bitrateDown.Bytes().ToString()}/s";
+            _bitrateUpValueText.Text = $"{bitrateUp.Bytes()}/s";
+            _bitrateDownValueText.Text = $"{bitrateDown.Bytes()}/s";
             _packetsUpValueText.Text = $"{packetsUp.ToString(PacketsValueFormat)} pk/s";
             _packetsDownValueText.Text = $"{packetsDown.ToString(PacketsValueFormat)} pk/s";
             _framesUpValueText.Text = $"{framesUp.ToString(PacketsValueFormat)} fps";
