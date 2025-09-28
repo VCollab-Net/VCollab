@@ -30,6 +30,16 @@ public sealed class DoubleBufferedTextureReader : IDisposable
 
         EnsureTextureFormat(sourceTexture, ref targetTexture, textureRegion);
 
+        // Check if we're not reading out of bounds of the texture. This can happen when changing source as the
+        // Spout receiver has a 1 frame delay after changing source name
+        if (textureRegion.OffsetX + textureRegion.Width > sourceTexture.Width
+            || textureRegion.OffsetY + textureRegion.Height > sourceTexture.Height)
+        {
+            // In this case, skip reading
+            textureInfo = default;
+            return ReadOnlySpan<byte>.Empty;
+        }
+
         // Send the gpu commands to copy source texture to target staging texture
         using var commands = _resourceFactory.CreateCommandList();
         targetBufferedResource.WaitFence?.Dispose();
