@@ -17,6 +17,9 @@ public partial class NetworkMetricsDrawable : Container
     public static long FramesReceived { get; set; } = 0;
     public static long FramesSent { get; set; } = 0;
     public static long FramesSkipped { get; set; } = 0;
+    public static int MembersCount { get; set; } = 1;
+
+    private SpriteText _membersCountValueText;
 
     private SpriteText _latencyValueText = null!;
 
@@ -50,7 +53,7 @@ public partial class NetworkMetricsDrawable : Container
     [BackgroundDependencyLoader]
     private void Load(TextureStore textureStore)
     {
-        Size = new Vector2(330, 142);
+        Size = new Vector2(350, 158);
 
         var arrowUpTexture = textureStore.Get("network-arrow-up");
         var arrowDownTexture = textureStore.Get("network-arrow-down");
@@ -72,13 +75,30 @@ public partial class NetworkMetricsDrawable : Container
 
         Drawable?[][] gridContent =
         [
+            // Participants
+            [
+                new SpriteText
+                {
+                    Font = FontUsage.Default.With(size: 20),
+                    Colour = Colors.Primary,
+                    Text = "Members:"
+                },
+                _membersCountValueText = new SpriteText
+                {
+                    Margin = new MarginPadding { Left = 4 },
+                    Font = FontUsage.Default.With(size: 20),
+                    Colour = Colors.TextLight,
+                    Text = "1"
+                },
+                null
+            ],
             // Latency
             [
                 new SpriteText
                 {
                     Font = FontUsage.Default.With(size: 20),
                     Colour = Colors.Primary,
-                    Text = "Latency: "
+                    Text = "Latency:"
                 },
                 _latencyValueText = new SpriteText
                 {
@@ -95,7 +115,7 @@ public partial class NetworkMetricsDrawable : Container
                 {
                     Font = FontUsage.Default.With(size: 20),
                     Colour = Colors.Primary,
-                    Text = "Skipped: "
+                    Text = "Skipped:"
                 },
                 _framesSkippedValueText = new SpriteText
                 {
@@ -141,7 +161,7 @@ public partial class NetworkMetricsDrawable : Container
                 {
                     Font = FontUsage.Default.With(size: 20),
                     Colour = Colors.Primary,
-                    Text = "Packets: "
+                    Text = "Packets:"
                 },
                 Horizontal
                 (
@@ -170,7 +190,7 @@ public partial class NetworkMetricsDrawable : Container
                 {
                     Font = FontUsage.Default.With(size: 20),
                     Colour = Colors.Primary,
-                    Text = "Frames: "
+                    Text = "Frames:"
                 },
                 Horizontal
                 (
@@ -231,13 +251,14 @@ public partial class NetworkMetricsDrawable : Container
                             new Dimension(GridSizeMode.AutoSize),
                             new Dimension(GridSizeMode.AutoSize),
                             new Dimension(GridSizeMode.AutoSize),
+                            new Dimension(GridSizeMode.AutoSize),
                             new Dimension(GridSizeMode.AutoSize)
                         ],
                         ColumnDimensions =
                         [
-                            new Dimension(GridSizeMode.Relative, .24f),
-                            new Dimension(GridSizeMode.Relative, .38f),
-                            new Dimension(GridSizeMode.Relative, .38f)
+                            new Dimension(GridSizeMode.Relative, .26f),
+                            new Dimension(GridSizeMode.Relative, .37f),
+                            new Dimension(GridSizeMode.Relative, .37f)
                         ],
                         Content = gridContent
                     }
@@ -296,6 +317,7 @@ public partial class NetworkMetricsDrawable : Container
             _framesUpValueText.Text = $"{framesUp.ToString(PacketsValueFormat)} fps";
             _framesDownValueText.Text = $"{framesDown.ToString(PacketsValueFormat)} fps";
             _framesSkippedValueText.Text = $"{FramesSkipped} frames";
+            _membersCountValueText.Text = MembersCount.ToString();
 
             _latencyValueText.Text = $"{Latency} ms";
         }

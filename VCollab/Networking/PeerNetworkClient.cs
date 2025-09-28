@@ -39,6 +39,8 @@ public class PeerNetworkClient : NetworkClient
         peer.Send(message, InformationMessagesChannel, InformationMessagesDeliveryMethod);
 
         Logger.Log("Sent peer connection message to host", LoggingTarget.Network);
+
+        NetworkMetricsDrawable.MembersCount++;
     }
 
     public override void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
@@ -55,6 +57,8 @@ public class PeerNetworkClient : NetworkClient
 
         _hostPeer = null;
         _channelOffset = null;
+
+        NetworkMetricsDrawable.MembersCount--;
     }
 
     public override void OnNetworkLatencyUpdate(NetPeer peer, int latency)
@@ -91,6 +95,8 @@ public class PeerNetworkClient : NetworkClient
                 PeerStates[newPeerMessage.ChannelOffset]?.Dispose();
                 PeerStates[newPeerMessage.ChannelOffset] = NewPeerState(newPeerMessage.ChannelOffset, newPeerMessage.Name);
 
+                NetworkMetricsDrawable.MembersCount++;
+
                 break;
 
             case StateInitializationMessage stateInitializationMessage:
@@ -102,12 +108,16 @@ public class PeerNetworkClient : NetworkClient
                     PeerStates[peerInfo.ChannelOffset] = NewPeerState(peerInfo.ChannelOffset, peerInfo.Name);
                 }
 
+                NetworkMetricsDrawable.MembersCount = stateInitializationMessage.PeerInfos.Length + 1; // + host
+
                 break;
 
             case DisconnectedPeerMessage disconnectedPeerMessage:
 
                 PeerStates[disconnectedPeerMessage.ChannelOffset]?.Dispose();
                 PeerStates[disconnectedPeerMessage.ChannelOffset] = null;
+
+                NetworkMetricsDrawable.MembersCount--;
 
                 break;
 

@@ -45,6 +45,8 @@ public class HostNetworkClient : NetworkClient
     public override void OnPeerConnected(NetPeer peer)
     {
         Logger.Log($"OnPeerConnected ({peer.Id}), previously connected peers: {_peers.Count}", LoggingTarget.Network);
+
+        NetworkMetricsDrawable.MembersCount++;
     }
 
     public override void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
@@ -61,6 +63,8 @@ public class HostNetworkClient : NetworkClient
         }
 
         Logger.Log($"OnPeerDisconnected ({peer.Id} - {disconnectInfo.Reason}), remaining connected peers: {_peers.Count}", LoggingTarget.Network);
+
+        NetworkMetricsDrawable.MembersCount--;
     }
 
     protected override void SendRawData(ReadOnlySpan<byte> data, DeliveryMethod deliveryMethod)
