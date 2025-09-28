@@ -20,6 +20,7 @@ public sealed class AlphaMaskUnpacker : IDisposable
     private DeviceBuffer? _stagingBuffer;
     private DeviceBuffer? _uniformBuffer;
     private ResourceSet? _resourceSet;
+    private Texture? _targetTexture;
 
     private uint _groupsCount;
 
@@ -142,6 +143,18 @@ public sealed class AlphaMaskUnpacker : IDisposable
                 _layout,
                 targetTexture, _inputBuffer, _uniformBuffer
             ));
+        }
+        // This happens if the texture changed but the size stayed the same
+        // In this case, we need to recreate the resource set to target the correct texture but not the buffer sizes
+        else if (_targetTexture != targetTexture)
+        {
+            _resourceSet?.Dispose();
+            _resourceSet = _resourceFactory.CreateResourceSet(new ResourceSetDescription(
+                _layout,
+                targetTexture, _inputBuffer, _uniformBuffer
+            ));
+
+            _targetTexture = targetTexture;
         }
     }
 

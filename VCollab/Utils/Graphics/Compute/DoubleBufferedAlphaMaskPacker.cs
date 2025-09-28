@@ -143,9 +143,6 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
             outputBufferSize += sizeof(uint) - (outputBufferSize % sizeof(uint));
         }
 
-        // Also update target texture
-        _texture = sourceTexture;
-
         // Ensure target staging buffer has valid size
         if (targetBuffer is null || targetBuffer.SizeInBytes != outputBufferSize)
         {
@@ -169,9 +166,22 @@ public sealed class DoubleBufferedAlphaMaskPacker : IDisposable
             _resourceSet?.Dispose();
             _resourceSet = _resourceFactory.CreateResourceSet(new ResourceSetDescription(
                 _layout,
-                _texture, _outputBuffer, _uniformBuffer
+                sourceTexture, _outputBuffer, _uniformBuffer
             ));
         }
+        // This happens if the texture changed but the size stayed the same
+        // In this case, we need to recreate the resource set to target the correct texture but not the buffer sizes
+        else if (_texture != sourceTexture)
+        {
+            _resourceSet?.Dispose();
+            _resourceSet = _resourceFactory.CreateResourceSet(new ResourceSetDescription(
+                _layout,
+                sourceTexture, _outputBuffer, _uniformBuffer
+            ));
+        }
+
+        // Always update source texture
+        _texture = sourceTexture;
     }
 
     private void SwapBuffers()
