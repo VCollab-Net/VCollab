@@ -12,6 +12,7 @@ public partial class CaptureSetupScreen : FadingScreen
     private VCollabSettings Settings { get; set; } = null!;
 
     private ComboBox<string> _senderPicker = null!;
+    private SpoutSprite _spoutSprite = null!;
     private SpoutTextureReceiver _spoutTextureReceiver = null!;
     private SelectionRectangle _selectionRectangle = null!;
     private SpriteText _selectionTextInfo = null!;
@@ -29,7 +30,7 @@ public partial class CaptureSetupScreen : FadingScreen
             [
                 _spoutTextureReceiver = new SpoutTextureReceiver(),
 
-                new SpoutSprite(_spoutTextureReceiver),
+                _spoutSprite = new SpoutSprite(_spoutTextureReceiver),
 
                 _selectionRectangle = new SelectionRectangle(
                     new Vector2(350, 600),
@@ -241,11 +242,19 @@ public partial class CaptureSetupScreen : FadingScreen
 
         Settings.Save();
 
-        this.Exit();
+        ReturnToMainScreen();
     }
 
     private void CancelButtonClicked()
     {
+        ReturnToMainScreen();
+    }
+
+    private void ReturnToMainScreen()
+    {
+        // Clean up spout sprite early to avoid it trying to draw disposed Texture
+        _spoutSprite.Expire();
+
         this.Exit();
     }
 }

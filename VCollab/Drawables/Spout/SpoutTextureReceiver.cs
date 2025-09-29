@@ -116,9 +116,17 @@ public sealed partial class SpoutTextureReceiver : Drawable, ITextureProvider
 
     private void DrawThreadTask()
     {
-        // The receiver is/has been disposed, skip drawing
-        if (!_spoutReceiverLock.TryEnter() || _spoutReceiver is null)
+        // The receiver is being disposed, skip drawing
+        if (!_spoutReceiverLock.TryEnter())
         {
+            return;
+        }
+
+        // The receiver has been disposed
+        if (_spoutReceiver is null)
+        {
+            _spoutReceiverLock.Exit();
+
             return;
         }
 
@@ -141,8 +149,6 @@ public sealed partial class SpoutTextureReceiver : Drawable, ITextureProvider
         if (!_spoutReceiver.ReceiveTexture())
         {
             Logger.Log("Could not receive texture!", level: LogLevel.Important);
-
-            return;
         }
 
         _spoutReceiverLock.Exit();

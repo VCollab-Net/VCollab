@@ -18,7 +18,7 @@ public partial class NetworkMetricsDrawable : Container
     public static long FramesSkipped { get; set; } = 0;
     public static int MembersCount { get; set; } = 1;
 
-    private SpriteText _membersCountValueText;
+    private SpriteText _membersCountValueText = null!;
 
     private SpriteText _latencyValueText = null!;
 
