@@ -9,5 +9,7 @@ public record SpoutSourceSettings(
     int TextureWidth,
     int TextureHeight,
     float RelativeWidth,
-    float RelativeHeight
+    float RelativeHeight,
+
+    bool ShowInOutput
 );

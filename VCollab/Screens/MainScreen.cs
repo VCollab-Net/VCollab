@@ -20,6 +20,7 @@ public partial class MainScreen : FadingScreen
     [Resolved]
     private LogsSenderService LogsSenderService { get; set; } = null!;
 
+    private Container _mainContainer = null!;
     private SpoutSenderContainer _modelsCanvas = null!;
     private SpoutTextureReceiver _userModelSpoutReceiver = null!;
     private DraggableResizableSprite _userResizableSprite = null!;
@@ -33,7 +34,7 @@ public partial class MainScreen : FadingScreen
     [BackgroundDependencyLoader]
     private void Load(GameHost host)
     {
-        AddInternal(new Container
+        AddInternal(_mainContainer = new Container
         {
             RelativeSizeAxes = Axes.Both,
             Children =
@@ -47,15 +48,7 @@ public partial class MainScreen : FadingScreen
                 // Models canvas is a Spout sender
                 _modelsCanvas = new SpoutSenderContainer("VCollab")
                 {
-                    RelativeSizeAxes = Axes.Both,
-
-                    Children =
-                    [
-                        _userResizableSprite = new DraggableResizableSprite(
-                            _userSpoutSprite = new SpoutSprite(_userModelSpoutReceiver),
-                            Settings.UserModelSettings.Scale
-                        )
-                    ]
+                    RelativeSizeAxes = Axes.Both
                 },
 
                 // Room UI
@@ -99,6 +92,21 @@ public partial class MainScreen : FadingScreen
                 new VersionDisplay()
             ]
         });
+
+        // Add user model to correct container depending on if it's shown in output or not
+        _userResizableSprite = new DraggableResizableSprite(
+            _userSpoutSprite = new SpoutSprite(_userModelSpoutReceiver),
+            Settings.UserModelSettings.Scale
+        );
+
+        if (Settings.SpoutSourceSettings?.ShowInOutput is true)
+        {
+            _modelsCanvas.Add(_userResizableSprite);
+        }
+        else
+        {
+            _mainContainer.Add(_userResizableSprite);
+        }
 
         // Update user model draw texture and read
         UpdateUserModel();
@@ -173,6 +181,24 @@ public partial class MainScreen : FadingScreen
             var textureSize = new Vector2(sourceSettings.TextureWidth, sourceSettings.TextureHeight);
 
             _userSpoutSprite.UpdateTextureRectangle(textureRectangle, textureSize);
+
+            // Update on which container the user model sprite is shown if needed
+            if (sourceSettings.ShowInOutput)
+            {
+                if (_userResizableSprite.Parent == _mainContainer)
+                {
+                    _mainContainer.Remove(_userResizableSprite, false);
+                    _modelsCanvas.Add(_userResizableSprite);
+                }
+            }
+            else
+            {
+                if (_userResizableSprite.Parent == _modelsCanvas)
+                {
+                    _modelsCanvas.Remove(_userResizableSprite, false);
+                    _mainContainer.Add(_userResizableSprite);
+                }
+            }
         }
     }
 

@@ -18,6 +18,7 @@ public partial class CaptureSetupScreen : FadingScreen
     private SelectionRectangle _selectionRectangle = null!;
     private SpriteText _selectionTextInfo = null!;
     private SpriteText _spoutTextureInfo = null!;
+    private TextCheckBox _displayOwnModelCheckbox = null!;
 
     private double _lastFetchSendersTime;
 
@@ -42,7 +43,7 @@ public partial class CaptureSetupScreen : FadingScreen
                 // UI Panel
                 new Container
                 {
-                    Size = new Vector2(350, 300),
+                    Size = new Vector2(370, 340),
                     Position = new Vector2(30, 30),
 
                     Children =
@@ -113,6 +114,13 @@ public partial class CaptureSetupScreen : FadingScreen
 
                                             Colour = Colors.TextLight,
                                             Text = "N/A"
+                                        },
+
+                                        // Own model display checkbox
+                                        _displayOwnModelCheckbox = new TextCheckBox(Colors.Primary, Settings.SpoutSourceSettings?.ShowInOutput is true)
+                                        {
+                                            Margin = new MarginPadding { Top = 20f },
+                                            Text = "Show own model in Spout output (OBS)"
                                         }
                                     ]
                                 },
@@ -238,7 +246,8 @@ public partial class CaptureSetupScreen : FadingScreen
             _spoutTextureReceiver.Texture.Width,
             _spoutTextureReceiver.Texture.Height,
             selection.Width / DrawWidth,
-            selection.Height / DrawHeight
+            selection.Height / DrawHeight,
+            _displayOwnModelCheckbox.Checked
         );
 
         Settings.Save();
