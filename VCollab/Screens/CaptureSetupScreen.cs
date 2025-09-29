@@ -191,7 +191,7 @@ public partial class CaptureSetupScreen : FadingScreen
         base.Update();
 
         // Regularly update sender list
-        if (Time.Current - _lastFetchSendersTime > 1000)
+        if (Time.Current - _lastFetchSendersTime > 250)
         {
             _senderPicker.SetItem(_spoutTextureReceiver.GetSenderNames().Where(name => !name.Contains("VCollab")));
 
