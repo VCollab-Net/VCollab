@@ -11,6 +11,7 @@ public partial class CaptureSetupScreen : FadingScreen
     [Resolved]
     private VCollabSettings Settings { get; set; } = null!;
 
+    private Container _container = null!;
     private ComboBox<string> _senderPicker = null!;
     private SpoutSprite _spoutSprite = null!;
     private SpoutTextureReceiver _spoutTextureReceiver = null!;
@@ -23,7 +24,7 @@ public partial class CaptureSetupScreen : FadingScreen
     [BackgroundDependencyLoader]
     private void Load()
     {
-        AddInternal(new Container
+        AddInternal(_container = new Container
         {
             RelativeSizeAxes = Axes.Both,
             Children =
@@ -253,7 +254,10 @@ public partial class CaptureSetupScreen : FadingScreen
     private void ReturnToMainScreen()
     {
         // Clean up spout sprite early to avoid it trying to draw disposed Texture
-        _spoutSprite.Expire();
+        _spoutSprite.Texture = null;
+
+        _container.Remove(_spoutTextureReceiver, true);
+        _container.Remove(_spoutSprite, true);
 
         this.Exit();
     }
