@@ -20,7 +20,7 @@ public partial class MainScreen : FadingScreen
     [Resolved]
     private LogsSenderService LogsSenderService { get; set; } = null!;
 
-    private Container _mainContainer = null!;
+    private Container _nonOutputModelsCanvas = null!;
     private SpoutSenderContainer _modelsCanvas = null!;
     private SpoutTextureReceiver _userModelSpoutReceiver = null!;
     private DraggableResizableSprite _userResizableSprite = null!;
@@ -34,7 +34,7 @@ public partial class MainScreen : FadingScreen
     [BackgroundDependencyLoader]
     private void Load(GameHost host)
     {
-        AddInternal(_mainContainer = new Container
+        AddInternal(new Container
         {
             RelativeSizeAxes = Axes.Both,
             Children =
@@ -44,6 +44,12 @@ public partial class MainScreen : FadingScreen
 
                 // User model reader, this will capture the source Spout2 texture to send it over network
                 _userModelReader = new NetworkSendFrameTextureReader(_userModelSpoutReceiver),
+
+                // Non-Spout model canvas to "hide" models from output
+                _nonOutputModelsCanvas = new Container
+                {
+                    RelativeSizeAxes = Axes.Both
+                },
 
                 // Models canvas is a Spout sender
                 _modelsCanvas = new SpoutSenderContainer("VCollab")
@@ -105,7 +111,7 @@ public partial class MainScreen : FadingScreen
         }
         else
         {
-            _mainContainer.Add(_userResizableSprite);
+            _nonOutputModelsCanvas.Add(_userResizableSprite);
         }
 
         // Update user model draw texture and read
@@ -185,9 +191,9 @@ public partial class MainScreen : FadingScreen
             // Update on which container the user model sprite is shown if needed
             if (sourceSettings.ShowInOutput)
             {
-                if (_userResizableSprite.Parent == _mainContainer)
+                if (_userResizableSprite.Parent == _nonOutputModelsCanvas)
                 {
-                    _mainContainer.Remove(_userResizableSprite, false);
+                    _nonOutputModelsCanvas.Remove(_userResizableSprite, false);
                     _modelsCanvas.Add(_userResizableSprite);
                 }
             }
@@ -196,7 +202,7 @@ public partial class MainScreen : FadingScreen
                 if (_userResizableSprite.Parent == _modelsCanvas)
                 {
                     _modelsCanvas.Remove(_userResizableSprite, false);
-                    _mainContainer.Add(_userResizableSprite);
+                    _nonOutputModelsCanvas.Add(_userResizableSprite);
                 }
             }
         }
