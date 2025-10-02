@@ -12,6 +12,9 @@ public partial class NetworkSendFrameTextureReader : FrameTextureReader
     [Resolved]
     private NetworkManager NetworkManager { get; set; } = null!;
 
+    [Resolved]
+    private VCollabSettings Settings { get; set; } = null!;
+
     private readonly TJCompressor _jpegCompressor = new();
     private readonly ArrayBufferWriter<byte> _alphaCompressedDataBuffer = new();
 
@@ -55,7 +58,7 @@ public partial class NetworkSendFrameTextureReader : FrameTextureReader
             (int) textureInfo.Height,
             JpegUtils.VeldridToJpegPixelFormat(textureInfo.PixelFormat),
             TJSubsamplingOptions.TJSAMP_420,
-            75,
+            Settings.EncoderImageQuality,
             TJFlags.NONE
         );
 

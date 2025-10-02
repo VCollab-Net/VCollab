@@ -18,6 +18,7 @@ public partial class CaptureSetupScreen : FadingScreen
     private SelectionRectangle _selectionRectangle = null!;
     private SpriteText _selectionTextInfo = null!;
     private SpriteText _spoutTextureInfo = null!;
+    private SliderInt _imageQualitySlider = null!;
     private TextCheckBox _displayOwnModelCheckbox = null!;
 
     private double _lastFetchSendersTime;
@@ -43,7 +44,7 @@ public partial class CaptureSetupScreen : FadingScreen
                 // UI Panel
                 new Container
                 {
-                    Size = new Vector2(370, 340),
+                    Size = new Vector2(370, 400),
                     Position = new Vector2(30, 30),
 
                     Children =
@@ -115,6 +116,17 @@ public partial class CaptureSetupScreen : FadingScreen
                                             Colour = Colors.TextLight,
                                             Text = "N/A"
                                         },
+
+                                        // JPEG quality slider
+                                        new SpriteText
+                                        {
+                                            Font = FontUsage.Default.With(size: 22),
+                                            Margin = new MarginPadding { Left = 2f, Top = 6f, Bottom = 6f },
+
+                                            Colour = Colors.Primary,
+                                            Text = "Image quality"
+                                        },
+                                        _imageQualitySlider = new SliderInt(70, 100, Settings.EncoderImageQuality),
 
                                         // Own model display checkbox
                                         _displayOwnModelCheckbox = new TextCheckBox(Colors.Primary, Settings.SpoutSourceSettings?.ShowInOutput is true)
@@ -249,6 +261,8 @@ public partial class CaptureSetupScreen : FadingScreen
             selection.Height / DrawHeight,
             _displayOwnModelCheckbox.Checked
         );
+
+        Settings.EncoderImageQuality = _imageQualitySlider.Value;
 
         Settings.Save();
 

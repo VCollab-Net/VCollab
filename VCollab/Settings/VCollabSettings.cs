@@ -14,6 +14,9 @@ public record VCollabSettings : IDependencyInjectionCandidate
 
     public string UserName { get; set; } = string.Empty;
 
+    // 75 is a good quality-size tradeoff for the Jpeg encoding
+    public int EncoderImageQuality { get; set; } = 75;
+
     public required SpoutSourceSettings? SpoutSourceSettings { get; set; }
     public UserModelSettings UserModelSettings { get; set; } = new();
 
